@@ -3,117 +3,594 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>掲示板</title>
-  <!-- ⚠️ スタイルシートや基本レイアウトのCSSをここに必要に応じて配置、または外部読み込みしてください -->
+  <title>みんなの掲示板 (Supabase版)</title>
+  <!-- 💾 Supabase JS SDK の読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-color: #ffffff; --text-color: #1a202c; --border-color: #e2e8f0;
+      --bg-color: #f8f9fa; --card-bg: #ffffff; --text-color: #333333;
+      --border-color: #e2e8f0; --sidebar-title: #2d3748; --room-bg: #f7fafc;
+      --room-select: #edf2f7; --reply-bg: #f8fafc;
     }
     [data-theme="dark"] {
-      --bg-color: #1a202c; --text-color: #f7fafc; --border-color: #4a5568;
+      --bg-color: #1a202c; --card-bg: #2d3748; --text-color: #e2e8f0;
+      --border-color: #4a5568; --sidebar-title: #edf2f7; --room-bg: #2d3748;
+      --room-select: #4a5568; --reply-bg: #1a202c;
     }
-    body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; margin: 0; padding: 10px; }
-    .room-item { padding: 8px; margin: 4px 0; border: 1px solid var(--border-color); cursor: pointer; border-radius: 4px; }
-    .room-item.active { background-color: #ebf8ff; border-color: #bee3f8; color: #2b6cb0; }
-    .post { border: 1px solid var(--border-color); padding: 12px; margin-bottom: 12px; border-radius: 6px; }
-    .post.pinned { border: 2px solid #3182ce; background-color: #f7fafc; }
-    .spoiler-border { border: 2px dashed #ecc94b; }
-    .reply-item { background: #f7fafc; border: 1px solid var(--border-color); padding: 6px; margin-top: 4px; border-radius: 4px; }
-    .anchor-link { color: #3182ce; cursor: pointer; text-decoration: underline; margin-right: 4px; }
-    .text-collapsed, .saved-text-collapsed { max-height: 70px; overflow: hidden; position: relative; }
-    .text-toggle-btn { background: none; border: none; color: #3182ce; cursor: pointer; padding: 2px 0; }
-    .saved-post-item { border-bottom: 1px dashed var(--border-color); padding: 8px 0; }
-    .saved-post-meta { font-size: 11px; display: flex; justify-content: space-between; color: #718096; }
-    .deleted-badge { color: #ef4444; font-weight: bold; font-size: 11px; background: #fee2e2; padding: 1px 4px; border-radius: 3px; }
+
+    body { font-family: sans-serif; padding: 20px; background: var(--bg-color); color: var(--text-color); margin: 0; transition: background 0.3s, color 0.3s; }
+    .container { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1200px; margin: 0 auto; position: relative; }
+    
+    .top-bar { display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto 15px auto; }
+    .theme-btn { padding: 6px 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+
+    /* 左側：サイドバー（タブ切り替え） */
+    .left-sidebar {
+      width: 260px; background: var(--card-bg); padding: 15px; border-radius: 8px; 
+      border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      position: sticky; top: 20px; height: fit-content; max-height: 85vh; overflow-y: auto;
+      transition: all 0.3s ease; z-index: 100;
+    }
+    .left-sidebar.collapsed { display: none; }
+    .sidebar-toggle-btn { padding: 6px 12px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+    
+    /* タブヘッダー */
+    .sidebar-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 12px; gap: 4px; }
+    .sidebar-tab-btn { flex: 1; padding: 6px; background: var(--room-bg); border: 1px solid var(--border-color); border-bottom: none; border-radius: 4px 4px 0 0; cursor: pointer; font-size: 12px; font-weight: bold; color: var(--text-color); transition: 0.2s; }
+    .sidebar-tab-btn.active { background: #3182ce; color: white; border-color: #3182ce; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .room-item { padding: 8px; border-radius: 4px; margin-bottom: 6px; cursor: pointer; background: var(--room-bg); border: 1px solid var(--border-color); font-size: 13px; transition: 0.2s; }
+    .room-item:hover { opacity: 0.8; }
+    .room-item.active { background: #3182ce; color: white; border-color: #3182ce; }
+
+    /* 中央メイン */
+    .main-content { flex: 1; min-width: 300px; max-width: 550px; }
+    
+    /* 右側：説明 & 別枠 */
+    .sidebar { flex: 1; min-width: 250px; max-width: 380px; background: var(--card-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); height: fit-content; }
+    .sidebar h3 { margin-top: 0; color: var(--sidebar-title); border-bottom: 2px solid var(--border-color); padding-bottom: 6px; font-size: 18px; }
+    .sidebar h4 { margin-top: 15px; margin-bottom: 5px; color: #007bff; border-bottom: 2px solid var(--border-color); padding-bottom: 4px; font-size: 14px; }
+    .sidebar ul { padding-left: 18px; font-size: 13px; line-height: 1.6; opacity: 0.9; margin-top: 5px; }
+    .sidebar li { margin-bottom: 6px; }
+
+    /* 🚨 緊急脱出セクションの装飾 */
+    .panic-warning-box { background: #fff5f5; border: 1px solid #feb2b2; padding: 10px 12px; border-radius: 6px; margin: 10px 0 15px 0; font-size: 12px; color: #9b2c2c; line-height: 1.5; }
+    [data-theme="dark"] .panic-warning-box { background: #2d1a1a; border-color: #9b2c2c; color: #feb2b2; }
+    .panic-badge { display: inline-block; background: #e53e3e; color: white; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-bottom: 6px; }
+
+    /* 💾 保存済みコメント一覧の枠 */
+    .saved-posts-board { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; color: #333; }
+    [data-theme="dark"] .saved-posts-board { background: #142217; border-color: #164e26; color: #e8f5e9; }
+    .saved-posts-list { max-height: 50vh; overflow-y: auto; font-size: 12px; padding: 0; list-style: none; }
+    .saved-post-item { background: var(--card-bg); border: 1px solid var(--border-color); padding: 8px; margin-bottom: 8px; border-radius: 4px; position: relative; color: var(--text-color); }
+    .saved-post-meta { font-size: 10px; opacity: 0.7; margin-bottom: 4px; display: flex; justify-content: space-between; }
+
+    /* 保存一覧用の4行折りたたみスタイル */
+    .saved-text-collapsed { max-height: 5.6em; overflow: hidden; position: relative; }
+
+    .emergency-board { background: #fff5f5; border: 1px solid #fed7d7; padding: 12px; border-radius: 6px; margin-top: 15px; color: #333; }
+    [data-theme="dark"] .emergency-board { background: #2d1a1a; border-color: #631c1c; color: #fed7d7; }
+    .emergency-title { font-size: 13px; font-weight: bold; color: #c53030; margin-bottom: 5px; }
+    [data-theme="dark"] .emergency-title { color: #feb2b2; }
+    .emergency-desc { font-size: 11px; color: #666; line-height: 1.4; margin-bottom: 8px; }
+    [data-theme="dark"] .emergency-desc { color: #cbd5e0; }
+    .emergency-list { max-height: 250px; overflow-y: auto; font-size: 12px; padding-left: 0; list-style: none; margin: 0; }
+    .emergency-item { background: var(--card-bg); border: 1px solid var(--border-color); padding: 8px; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-color); }
+    .emergency-del-req-btn { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 10px; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+    [data-theme="dark"] .emergency-del-req-btn { background: #3a2222; border-color: #631c1c; color: #fca5a5; }
+
+    .user-config { background: var(--card-bg); padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .user-config input { padding: 6px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); border-radius: 4px; font-size: 13px; }
+
+    .room-selector { background: var(--room-select); padding: 12px; margin-bottom: 15px; border-radius: 6px; font-size: 14px; }
+    .room-header-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+    .room-select-wrapper { display: flex; align-items: center; gap: 5px; flex: 1; min-width: 200px; }
+    .room-selector select { flex: 1; padding: 6px; font-size: 14px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+    
+    .room-actions-wrapper { display: flex; gap: 5px; }
+    .room-pin-edit-btn { padding: 4px 8px; background: #4a5568; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+    .room-del-btn { padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+    
+    .create-room-box { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 10px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+    .create-room-box input { padding: 5px; font-size: 13px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); border-radius: 4px; }
+    .create-room-box button { padding: 5px 10px; background: #3182ce; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+
+    .input-area { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    textarea { width: 100%; height: 70px; padding: 10px; box-sizing: border-box; margin-bottom: 10px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); border-radius: 5px; font-size: 15px; resize: none; }
+    
+    /* 満杯時の警告表示スタイル */
+    .room-full-warning { background: #fffbeb; border: 1px solid #fef08a; padding: 10px; border-radius: 6px; color: #b45309; font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 10px; }
+    [data-theme="dark"] .room-full-warning { background: #2d2312; border-color: #b45309; color: #fde68a; }
+
+    .file-input-wrapper { margin-bottom: 10px; }
+    .file-label { display: inline-block; padding: 6px 12px; background: var(--room-select); color: var(--text-color); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; border: 1px solid var(--border-color); }
+    #imageInput { display: none; }
+    #previewContainer { margin-bottom: 10px; display: none; }
+    #previewImage { max-width: 80px; max-height: 80px; border-radius: 4px; }
+
+    /* 投票作成パネル */
+    .poll-creator-box { background: var(--room-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; margin-bottom: 12px; }
+    .poll-creator-box summary { font-size: 13px; font-weight: bold; cursor: pointer; color: #3182ce; }
+    .poll-input-group { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .poll-input-row { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+    .poll-input-row input[type="text"] { flex: 1; padding: 4px 8px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); border-radius: 4px; font-size: 12px; }
+    .poll-input-row select { padding: 4px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); }
+
+    /* 投稿内の投票UI */
+    .post-poll-container { background: var(--room-bg); border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; margin-top: 10px; }
+    .poll-title-bar { font-size: 12px; font-weight: bold; margin-bottom: 8px; color: #4a5568; display: flex; justify-content: space-between; }
+    [data-theme="dark"] .poll-title-bar { color: #cbd5e0; }
+    .poll-option-item { margin-bottom: 8px; cursor: pointer; position: relative; }
+    .poll-option-track { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; height: 32px; width: 100%; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; box-sizing: border-box; transition: transform 0.1s; }
+    .poll-option-track:hover { transform: scale(1.01); }
+    .poll-option-track.voted { border-color: #3182ce; box-shadow: 0 0 0 1px #3182ce; }
+    .poll-bar-fill { background: rgba(49, 130, 206, 0.15); height: 100%; position: absolute; left: 0; top: 0; transition: width 0.3s ease; z-index: 1; }
+    .poll-option-text { font-size: 13px; font-weight: 500; z-index: 2; display: flex; align-items: center; gap: 4px; }
+    .poll-option-count { font-size: 12px; font-weight: bold; z-index: 2; color: #4a5568; }
+    [data-theme="dark"] .poll-option-count { color: #cbd5e0; }
+    
+    .timer-setup { margin-bottom: 12px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+    .timer-setup select { padding: 5px; font-size: 13px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); border-radius: 4px; }
+    .spoiler-check-label { font-size: 14px; color: #d69e2e; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .add-btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .add-btn:disabled { background: #cbd5e0; color: #718096; cursor: not-allowed; }
+
+    /* 投稿カード */
+    .post { background: var(--card-bg); padding: 15px; margin-top: 15px; border-radius: 6px; border-left: 5px solid #007bff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; transition: background-color 0.5s ease; }
+    .post.pinned { border-left-color: #ec4899 !important; background: rgba(236, 72, 153, 0.03); }
+    .post.spoiler-border { border-left-color: #d69e2e; }
+    .post.flash-highlight { background-color: #fef08a !important; color: #333; }
+    
+    .post-control-bar { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px dashed var(--border-color); }
+    .pin-btn { background: #fce7f3; border: 1px solid #fbcfe8; color: #db2777; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    [data-theme="dark"] .pin-btn { background: #381a28; border-color: #501d36; color: #fbcfe8; }
+    .delete-btn { background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    [data-theme="dark"] .delete-btn { background: #3a2222; border-color: #631c1c; color: #fca5a5; }
+
+    .post-header { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.8; margin-bottom: 8px; font-weight: bold; }
+    .post-author { color: #007bff; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+    .post-index-num { background: #007bff; color: white; padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+    .user-uid { font-size: 10px; font-weight: normal; background: var(--room-select); padding: 1px 4px; border-radius: 3px; }
+    
+    .post-text { white-space: pre-wrap; word-break: break-all; font-size: 15px; line-height: 1.4; }
+    .post-text a, .reply-text a, .saved-post-item a { color: #3182ce; text-decoration: underline; font-weight: 500; }
+    
+    .anchor-link { color: #ea580c !important; font-weight: bold; text-decoration: none; cursor: pointer; background: #ffedd5; padding: 1px 4px; border-radius: 3px; }
+    [data-theme="dark"] .anchor-link { background: #4c2d1c; color: #ff9e64 !important; }
+    .attached-img { max-width: 100%; max-height: 200px; display: block; margin-top: 10px; border-radius: 4px; }
+    
+    /* 長文折りたたみ用のスタイル */
+    .text-collapsed { max-height: 14em; overflow: hidden; position: relative; }
+    .text-toggle-btn { background: none; border: none; color: #3182ce; font-weight: bold; cursor: pointer; padding: 4px 0; font-size: 13px; display: block; margin-top: 4px; }
+    .text-toggle-btn:hover { text-decoration: underline; }
+
+    /* アクションバー */
+    .post-action-zone { background: var(--room-bg); border: 1px solid var(--border-color); padding: 8px; border-radius: 6px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    .reaction-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+    .react-btn { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 3px 8px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    
+    .right-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+    .translate-btn, .tts-btn, .save-post-btn { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; font-size: 11px; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .tts-btn { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+    .save-post-btn { background: #fef3c7; border-color: #fde68a; color: #b45309; }
+    [data-theme="dark"] .translate-btn { background: #1c2d3a; border-color: #0369a1; color: #bae6fd; }
+    [data-theme="dark"] .tts-btn { background: #1a2e22; border-color: #166534; color: #bbf7d0; }
+    [data-theme="dark"] .save-post-btn { background: #2d2312; border-color: #b45309; color: #fde68a; }
+
+    /* 返信 */
+    .replies-box { margin-top: 10px; padding: 10px; background: var(--reply-bg); border-radius: 6px; border: 1px solid var(--border-color); }
+    .reply-item { font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--border-color); position: relative; transition: background-color 0.5s ease; }
+    .reply-item.flash-highlight { background-color: #fef08a !important; color: #333; }
+    .reply-header { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.8; }
+    .reply-author { font-weight: bold; display: flex; align-items: center; gap: 4px; }
+    .reply-index-num { background: #718096; color: white; padding: 0px 4px; border-radius: 2px; font-size: 9px; }
+    .reply-time-box { display: flex; gap: 6px; align-items: center; }
+    .reply-action-btn { background: none; border: none; color: #3b82f6; font-size: 11px; cursor: pointer; font-weight: bold; }
+    .reply-del-btn { background: none; border: none; color: #f87171; font-size: 11px; cursor: pointer; font-weight: bold; }
+    .reply-text { white-space: pre-wrap; word-break: break-all; margin-top: 4px; margin-bottom: 4px; }
+    .reply-form { display: flex; margin-top: 8px; gap: 5px; }
+    .reply-form input { flex: 1; padding: 5px; font-size: 12px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); border-radius: 4px; }
+    .reply-form button { padding: 4px 10px; background: #4a5568; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+    .reply-mini-actions { display: flex; gap: 8px; margin-top: 2px; justify-content: flex-end; }
   </style>
-  <!-- Supabase CDN (v2 JS Client) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<!-- 🛠️ 簡易的な表示確認用HTML構造（実際のUIに合わせてIDを統合・調整してください） -->
-<div style="display: flex; gap: 20px;">
-  <div style="width: 250px;">
-    <h3>部屋リスト</h3>
-    <select id="currentRoomSelect" onchange="window.switchRoom()"></select>
-    <div id="roomListContainer"></div>
-    <button id="roomPinBtn" style="display:none;">ピン</button>
-    <button id="roomDelBtn" style="display:none;" onclick="window.deleteCurrentRoom(true)">削除</button>
-    <hr>
-    <h3>保存済みフォルダ</h3>
-    <div id="savedPostsListContainer"></div>
-    <hr>
-    <h3>削除依頼一覧</h3>
-    <div id="emergencyList"></div>
-  </div>
+<div class="top-bar">
+  <button class="sidebar-toggle-btn" onclick="toggleLeftSidebar()">📁 左サイドバー 開閉</button>
+  <button class="theme-btn" onclick="toggleTheme()">🌓 モード切替</button>
+</div>
 
-  <div style="flex: 1;">
-    <div id="roomFullWarningMessage" style="display:none; color:red; font-weight:bold; margin-bottom:10px;">
-      ⚠️ この部屋は999個の投稿に達したため、親投稿の新規作成は停止しています。
+<div class="container">
+  
+  <!-- 左側：サイドバー（タブ切り替え式） -->
+  <div class="left-sidebar" id="leftSidebar">
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab-btn active" id="tabBtnRooms" onclick="switchSidebarTab('rooms')">📁 ルーム一覧</button>
+      <button class="sidebar-tab-btn" id="tabBtnSaved" onclick="switchSidebarTab('saved')">💾 保存済み</button>
     </div>
     
-    <div id="inputFormArea">
-      <input type="text" id="usernameInput" placeholder="名前" value="名無し">
-      <textarea id="inputText" style="width:100%; height:60px;" placeholder="新しい投稿を入力... (@を入力すると削除依頼)"></textarea>
-      <div id="timerSetupBox" style="display:flex; gap:10px;">
-        消去タイマー: 
-        <select id="expireTimerSelect">
-          <option value="never">自動消去なし</option>
-          <option value="1">1時間</option>
-          <option value="24">24時間</option>
-        </select>
+    <!-- ルームコンテンツ -->
+    <div id="tabContentRooms" class="tab-content active">
+      <div id="roomListContainer"></div>
+    </div>
+    
+    <!-- 保存済みコンテンツ -->
+    <div id="tabContentSaved" class="tab-content">
+      <div class="saved-posts-board">
+        <div id="savedPostsListContainer" class="saved-posts-list"></div>
       </div>
-      <div id="pollCreatorBox">
-        投票選択肢 (任意): <input type="text" id="pollOpt1"> <input type="text" id="pollOpt2"> <input type="text" id="pollOpt3"> <input type="text" id="pollOpt4">
-        最大投票数: <select id="pollMaxChoices"><option value="1">1つ選択</option><option value="2">2つ選択</option><option value="0">制限なし</option></select>
-      </div>
-      <div id="fileInputWrapper">
-        <label><input type="checkbox" id="isSpoilerCheck"> ネタバレ（隠す）</label>
-      </div>
-      <button id="addPostBtn" onclick="window.addMemo()">投稿する</button>
+    </div>
+  </div>
+
+  <!-- 中央メイン -->
+  <div class="main-content">
+    <div class="user-config">
+      <span>👤 名前:</span>
+      <input type="text" id="usernameInput" value="名無し" onchange="saveConfig()" style="width:100px;">
+      <span>🚨 緊急脱出URL:</span>
+      <input type="text" id="panicUrlInput" value="https://www.google.com" onchange="saveConfig()" style="width:180px;" placeholder="空欄時はGoogleに接続">
     </div>
 
-    <hr>
+    <div class="room-selector">
+      <div class="room-header-row">
+        <div class="room-select-wrapper">
+          📍 <strong>部屋:</strong> 
+          <select id="currentRoomSelect" onchange="switchRoom()">
+            <option value="メインルーム">メインルーム</option>
+          </select>
+        </div>
+        <div class="room-actions-wrapper">
+          <button class="room-pin-edit-btn" id="roomPinBtn" onclick="editCurrentRoomPin()">🔑 暗証番号設定</button>
+          <button class="room-del-btn" id="roomDelBtn" onclick="deleteCurrentRoom(true)">❌ この部屋を削除</button>
+        </div>
+      </div>
+      
+      <div class="create-room-box">
+        ➕ <strong>新しい部屋を作る:</strong><br>
+        <input type="text" id="newRoomName" placeholder="部屋の名前" style="width:110px;">
+        <input type="text" id="newRoomPin" placeholder="4桁の暗証番号" maxlength="4" style="width:90px;">
+        <button onclick="createNewRoom()">作成</button>
+      </div>
+    </div>
+
+    <!-- 投稿フォームエリア -->
+    <div class="input-area" id="mainInputArea">
+      <!-- 満杯（999個）の警告メッセージ用 -->
+      <div id="roomFullWarningMessage" class="room-full-warning" style="display:none;">
+        🔒 この部屋は999投稿に達したため「返信専用」になりました。<br>新規の親投稿はできません。
+      </div>
+
+      <textarea id="inputText" placeholder="新しい投稿を入力... (@を入力すると管理者への部屋削除依頼になります)"></textarea>
+      
+      <!-- 📊 投票作成パネル -->
+      <details class="poll-creator-box" id="pollCreatorBox">
+        <summary>📊 投票システムを追加する（2〜4択）</summary>
+        <div class="poll-input-group">
+          <div class="poll-input-row">1️⃣ <input type="text" id="pollOpt1" placeholder="選択肢 1"></div>
+          <div class="poll-input-row">2️⃣ <input type="text" id="pollOpt2" placeholder="選択肢 2"></div>
+          <div class="poll-input-row">3️⃣ <input type="text" id="pollOpt3" placeholder="選択肢 3 (空欄可)"></div>
+          <div class="poll-input-row">4️⃣ <input type="text" id="pollOpt4" placeholder="選択肢 4 (空欄可)"></div>
+          <div class="poll-input-row">
+            <span>⚙️ 複数選択ルール:</span>
+            <select id="pollMaxChoices">
+              <option value="1">1つだけ選べる（単一投票）</option>
+              <option value="2">最大2つまで選べる</option>
+              <option value="3">最大3つまで選べる</option>
+              <option value="0">制限なし（いくつでも選べる）</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <div class="file-input-wrapper" id="fileInputWrapper">
+        <label for="imageInput" class="file-label">📷 画像を追加</label>
+        <input type="file" id="imageInput" accept="image/*" onchange="previewFile()">
+      </div>
+      <div id="previewContainer">
+        <img id="previewImage" src="">
+        <button onclick="cancelImage()" style="background:none; border:none; color:red; cursor:pointer; font-size:11px;">消す</button>
+      </div>
+
+      <div class="timer-setup" id="timerSetupBox">
+        <div>
+          ⏰ <strong>残す時間:</strong>
+          <select id="expireTimerSelect">
+            <option value="never">消去しない</option>
+            <option value="1">1時間</option>
+            <option value="2">2時間</option>
+            <option value="24" selected>24時間</option>
+          </select>
+        </div>
+        <label class="spoiler-check-label">
+          <input type="checkbox" id="isSpoilerCheck"> ⚠️ ワンクッションにする
+        </label>
+      </div>
+
+      <button class="add-btn" id="addPostBtn" onclick="addMemo()">投稿する</button>
+    </div>
+
     <div id="memoList"></div>
+  </div>
+
+  <!-- 右側：ガイド説明 -->
+  <div class="sidebar">
+    <h3>📖 使い方ガイド</h3>
+    
+    <!-- 🚨 緊急脱出案内枠 -->
+    <div class="panic-warning-box">
+      <span class="panic-badge">🚨 一瞬で画面切替</span><br>
+      入力エリア（本文や返信欄）以外の場所で<b>[Enter]キー</b>を押すと、設定した「緊急脱出URL」へ一瞬でブラウザが切り替わります。<b>設定していない場合や空欄のときは、自動的にGoogleのトップページにジャンプします。</b>見られたくない時に活用してください。
+    </div>
+
+    <h4>🔁 999限界＆次部屋自動作成</h4>
+    <ul>
+      <li>1つの部屋の投稿数が<b>999個</b>に達すると、自動的に「メインルーム2」「メインルーム3」のように次の新しい部屋が自動生成されます。</li>
+      <li>999個に達した古い部屋は<b>削除不可能のまま、既存投稿への「返信」だけが書き込めるアーカイブ（返信専用）状態</b>になります。</li>
+      <li>※「メインルーム(数字)」という名前の部屋をユーザーが手動で作成することはできません。</li>
+    </ul>
+
+    <h4>💾 投稿の個別保存機能</h4>
+    <ul>
+      <li>投稿の右下にある「💾 保存」ボタンを押すと、左側サイドバーの「保存済み」タブ内に**自分専用**としてコピー保存されます。</li>
+      <li>部屋自体や元投稿が削除・時間消去されても、ここからいつでも内容を見返すことができます。</li>
+    </ul>
+
+    <h4>🔗 投稿内リンクについて</h4>
+    <ul>
+      <li>投稿文、返信欄、および左側の「保存済み」一覧に含まれるURL（`http://` や `https://`）は自動でリンク化され、<b>クリックするだけでいつでも直接そのページにジャンプ可能</b>です。</li>
+    </ul>
+
+    <h4><h4>🛡️ 荒らし連投対策システム</h4>
+    <ul>
+      <li>同一の部屋で同じユーザーが5回連続して酷似した文章を連投した場合、システムが荒らしと判断し、連投された投稿を**自動で一斉削除**します（「草」単発などは除外されます）。</li>
+    </ul>
+
+    <h4>📊 投票システム</h4>
+    <ul>
+      <li>2〜4択の投票を作れます。もう一度同じ枠を押すと<b>投票の取り消し（再投票）</b>が可能です。</li>
+    </ul>
+
+    <h4>📌 投稿のピン留め固定</h4>
+    <ul>
+      <li>各投稿の右上にある「📌 固定」を押すと、部屋の一番上に目立たせて固定しておくことができます。</li>
+    </ul>
+
+    <h4>💬 相手を指定して返信する</h4>
+    <ul>
+      <li>「💬」ボタンを押すと宛先番号（>>#番号）が自動入力されます。</li>
+    </ul>
+
+    <div class="emergency-board">
+      <div class="emergency-title">🔒 管理者への部屋削除依頼</div>
+      <div class="emergency-desc">
+        説明欄の部屋の暗証番号を全員が忘れてしまい、手動で削除できなくなった場合にご利用ください。部屋を消す際でも管理者は部屋の中を見ることはできません。
+      </div>
+      <div id="emergencyList"></div>
+    </div>
   </div>
 </div>
 
 <script>
   // -------------------------------------------------------------------------
-  // 🌐 Supabase 初期化設定 (あなた専用の情報を埋め込み済み)
+  // ⚙️ Supabase 設定 (ここをお手持ちのプロジェクト情報に書き換えてください)
   // -------------------------------------------------------------------------
-  const SUPABASE_URL = "https://czffquysuyfwwtimachk.supabase.co"; 
+  const SUPABASE_URL = "https://czffquysuyfwwtimachk.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_OZbvA1KLZYk6IUp45D2YzQ_0KR13sn5";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // -------------------------------------------------------------------------
-  // 📦 グローバル変数群
-  // -------------------------------------------------------------------------
+  let selectedImageData = "";
   let currentActiveRoom = "メインルーム";
-  let allPostsData = [];
-  let roomsInfoData = {};
-  let mySavedPostsData = JSON.parse(localStorage.getItem('mySavedPostsData_v2') || '[]');
-  let hiddenRequestsData = [];
   let openedSpoilers = [];
   let expandedTexts = [];
-  let selectedImageData = null; // 拡張用ダミー
+  
+  let allPostsData = [];
+  let roomsInfoData = {};
+  
+  // 【修正】保存済みはlocalStorage、非表示(削除依頼)は共通化のためグローバル空配列に変更
+  let mySavedPostsData = JSON.parse(localStorage.getItem('local_saved_posts_data_v6') || '[]');
+  let hiddenRequestsData = []; 
 
-  // モックヘルパー
-  const isSystemMainRoom = (name) => name === "メインルーム" || /^メインルーム\d+$/.test(name);
-  const hasNgWord = (text) => false; // NGワードフィルター実装用ダミー
-  window.cancelImage = () => { selectedImageData = null; };
-  window.switchSidebarTab = (tab) => console.log("Tab switched:", tab);
-  const scrollToPostByTarget = (target) => { const el = document.querySelector(target); if(el) el.scrollIntoView({behavior:'smooth'}); };
+  const NG_WORDS = ["ちんこ", "sex", "セックス", "ちんぽ", "ちんちん", "まんこ"];
 
-  // -------------------------------------------------------------------------
-  // 🔑 ルーム操作・削除ロジック
-  // -------------------------------------------------------------------------
+  function isSystemMainRoom(roomName) {
+    if (roomName === "メインルーム") return true;
+    return /^メインルーム\d+$/.test(roomName);
+  }
+
+  function getSimilarity(s1, s2) {
+    if (s1 === s2) return 1.0;
+    if (!s1 || !s2) return 0.0;
+    let longer = s1.length > s2.length ? s1 : s2;
+    let shorter = s1.length > s2.length ? s2 : s1;
+    if (longer.length === 0) return 1.0;
+    
+    let costs = new Array();
+    for (let i = 0; i <= longer.length; i++) {
+      let lastValue = i;
+      for (let j = 0; j <= shorter.length; j++) {
+        if (i == 0) costs[j] = j;
+        else {
+          if (j > 0) {
+            let newValue = costs[j - 1];
+            if (longer.charAt(i - 1) != shorter.charAt(j - 1))
+              newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+            costs[j - 1] = lastValue;
+            lastValue = newValue;
+          }
+        }
+      }
+      if (i > 0) costs[shorter.length] = lastValue;
+    }
+    return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
+  }
+
+  // 🛡️ 荒らし防止：Supabaseと連動するため、DB削除処理に書き換え
+  async function checkAndCleanSpam(newPost) {
+    const isWgrass = /^[wｗ草くさ]+$/i.test(newPost.text.trim());
+    if (isWgrass) return;
+
+    const roomPosts = allPostsData.filter(p => p.room === newPost.room);
+    if (roomPosts.length < 5) return;
+
+    const recent5 = roomPosts.slice(-5);
+    const sameUser = recent5.every(p => p.author_uid === newPost.author_uid);
+    if (!sameUser) return;
+
+    let isSpam = true;
+    for (let i = 0; i < recent5.length; i++) {
+      for (let j = i + 1; j < recent5.length; j++) {
+        const sim = getSimilarity(recent5[i].text || "", recent5[j].text || "");
+        if (sim < 0.8) {
+          isSpam = false;
+          break;
+        }
+      }
+      if (!isSpam) break;
+    }
+
+    if (isSpam) {
+      const spamKeys = recent5.map(p => p.firebase_key);
+      await supabaseClient.from('posts').delete().in('firebase_key', spamKeys);
+      alert("🚨 荒らし防止システム：同一の部屋で5回連続の類似投稿を検知したため、連投された投稿を自動で一斉削除しました。");
+    }
+  }
+
+  function hasNgWord(text) {
+    if (!text) return false;
+    return NG_WORDS.some(word => text.toLowerCase().includes(word.toLowerCase()));
+  }
+
+  function saveToLocalStorage() {
+    localStorage.setItem('local_saved_posts_data_v6', JSON.stringify(mySavedPostsData));
+    // 【修正】hidden_requestsのlocalStorageへの保存ロジックを除去
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const tag = e.target.tagName.toLowerCase();
+      if (tag !== 'input' && tag !== 'textarea') {
+        e.preventDefault();
+        const dest = document.getElementById('panicUrlInput').value.trim() || "https://www.google.com";
+        window.location.href = dest;
+      }
+    }
+  });
+
+  window.toggleTheme = () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const target = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', target);
+    localStorage.setItem('myBoardTheme', target);
+  };
+
+  window.toggleLeftSidebar = () => document.getElementById('leftSidebar').classList.toggle('collapsed');
+  
+  window.switchSidebarTab = (tabName) => {
+    document.getElementById('tabBtnRooms').classList.remove('active');
+    document.getElementById('tabBtnSaved').classList.remove('active');
+    document.getElementById('tabContentRooms').classList.remove('active');
+    document.getElementById('tabContentSaved').classList.remove('active');
+
+    if (tabName === 'rooms') {
+      document.getElementById('tabBtnRooms').classList.add('active');
+      document.getElementById('tabContentRooms').classList.add('active');
+    } else {
+      document.getElementById('tabBtnSaved').classList.add('active');
+      document.getElementById('tabContentSaved').classList.add('active');
+    }
+  };
+
+  window.saveConfig = () => {
+    const name = document.getElementById('usernameInput').value.trim() || '名無し';
+    if (hasNgWord(name)) {
+      alert("⚠️ 名前欄に不適切な言葉（NGワード）が含まれています。");
+      document.getElementById('usernameInput').value = "名無し";
+      localStorage.setItem('myWikiUsername11', '名無し');
+      return;
+    }
+    localStorage.setItem('myWikiUsername11', name);
+    localStorage.setItem('myPanicUrl11', document.getElementById('panicUrlInput').value.trim());
+    // 【デバッグ】初期ロード前に変更された場合のクラッシュ防止ガード
+    if (allPostsData && allPostsData.length > 0) refreshList(); 
+  };
+
+  window.previewFile = () => {
+    const file = document.getElementById('imageInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      selectedImageData = reader.result;
+      document.getElementById('previewImage').src = selectedImageData;
+      document.getElementById('previewContainer').style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.cancelImage = () => {
+    document.getElementById('imageInput').value = ""; selectedImageData = "";
+    document.getElementById('previewContainer').style.display = "none";
+  };
+
+  window.scrollToPostByTarget = (targetNum) => {
+    const targetId = "target_num_" + targetNum.replace('#', '');
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.classList.add('flash-highlight');
+      setTimeout(() => element.classList.remove('flash-highlight'), 2000);
+    } else {
+      alert(`⚠️ 該当の返信先が見つかりませんでした。`);
+    }
+  };
+
+  // 📁 部屋作成をSupabaseに反映
+  window.createNewRoom = async () => {
+    const nameInput = document.getElementById('newRoomName');
+    const pinInput = document.getElementById('newRoomPin');
+    const roomName = nameInput.value.trim(); const pin = pinInput.value.trim();
+    
+    if (!roomName) return;
+    if (hasNgWord(roomName)) {
+      alert("⚠️ 部屋名に不適切な言葉（NGワード）が含まれているため、作成できません。");
+      return;
+    }
+    if (isSystemMainRoom(roomName)) {
+      alert("⚠️ 「メインルーム(数字)」という名前の部屋はシステム予約されているため、手動作成できません。");
+      return;
+    }
+    if (roomsInfoData[roomName]) {
+      alert("⚠️ すでに同じ名前の部屋が存在します。");
+      return;
+    }
+
+    await supabaseClient.from('rooms').insert([{ name: roomName, pin: pin || null }]);
+    nameInput.value = ""; pinInput.value = ""; 
+    currentActiveRoom = roomName;
+  };
+
+  // 🔑 暗証番号設定をSupabaseに反映
+  window.editCurrentRoomPin = async () => {
+    if (isSystemMainRoom(currentActiveRoom)) {
+      alert("⚠️ メインルームシリーズに暗証番号を設定することはできません。");
+      return;
+    }
+    const currentPin = roomsInfoData[currentActiveRoom]?.pin || "設定なし";
+    const newPin = prompt(`部屋「${currentActiveRoom}」の新しい暗証番号を入力してください（最大4桁）。\n現在の設定: ${currentPin}`);
+    if (newPin === null) return;
+    const trimmedPin = newPin.trim().substring(0, 4);
+
+    await supabaseClient.from('rooms').update({ pin: trimmedPin || null }).eq('name', currentActiveRoom);
+    alert(trimmedPin ? `🔒 暗証番号を設定しました。` : "🔓 暗証番号を解除しました。");
+  };
+
   window.switchRoom = () => {
     const select = document.getElementById('currentRoomSelect');
-    if (!select) return;
     const targetRoom = select.value;
     const pin = roomsInfoData[targetRoom]?.pin;
-
+    
     if (pin) {
       const inputPin = prompt("暗証番号を入力してください：");
       if (inputPin === "351125") { deleteSpecificRoom(targetRoom); return; }
@@ -148,13 +625,7 @@
     return "メインルーム2";
   }
 
-  function saveToLocalStorage() {
-    localStorage.setItem('mySavedPostsData_v2', JSON.stringify(mySavedPostsData));
-  }
-
-  // -------------------------------------------------------------------------
   // 📝 新規投稿をSupabaseへインサート
-  // -------------------------------------------------------------------------
   window.addMemo = async () => {
     const roomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
     
@@ -228,15 +699,14 @@
       alert("投稿に失敗しました: " + error.message);
       return;
     }
+    
+    checkAndCleanSpam(newPost);
 
     el.value = ''; window.cancelImage(); document.getElementById('isSpoilerCheck').checked = false;
     document.getElementById('pollOpt1').value = ""; document.getElementById('pollOpt2').value = "";
     document.getElementById('pollOpt3').value = ""; document.getElementById('pollOpt4').value = "";
   };
 
-  // -------------------------------------------------------------------------
-  // 💾 自分専用フォルダ（保存機能）
-  // -------------------------------------------------------------------------
   window.savePostToMyFolder = (fbKey) => {
     const post = allPostsData.find(p => p.firebase_key === fbKey);
     if (!post) return;
@@ -260,6 +730,7 @@
     refreshList();
   };
 
+  // 【修正】削除依頼の非表示リストをSupabase(共通)に送信・反映する
   window.hideDeleteRequest = async (fbKey) => {
     if (!confirm("この削除依頼を一覧から非表示にしますか？（全員の画面から非表示になります）")) return;
     
@@ -274,9 +745,7 @@
     }
   };
 
-  // -------------------------------------------------------------------------
-  // 📊 投票・ピン留め・翻訳・音声・削除
-  // -------------------------------------------------------------------------
+  // 📊 投票をSupabaseに反映
   window.castVote = async (fbKey, optionId) => {
     const post = allPostsData.find(p => p.firebase_key === fbKey);
     if (!post || !post.poll) return;
@@ -366,9 +835,6 @@
     }
   };
 
-  // -------------------------------------------------------------------------
-  // 💬 返信（Reply）制御ロジック
-  // -------------------------------------------------------------------------
   window.setReplyTarget = (postId, targetNum) => {
     const input = document.getElementById(`repInput_${postId}`);
     if(input) { input.value = `>>#${targetNum} ` + input.value; input.focus(); }
@@ -387,19 +853,7 @@
     const post = allPostsData.find(p => p.firebase_key === fbKey);
     if(post) {
       let nextReplies = post.replies ? [...post.replies] : [];
-      
-      let maxSubIdx = 0;
-      nextReplies.forEach(rep => {
-        if (rep.indexNum && typeof rep.indexNum === 'string') {
-          const parts = rep.indexNum.split('-');
-          if (parts.length > 1) {
-            const num = parseInt(parts[parts.length - 1], 10);
-            if (!isNaN(num) && num > maxSubIdx) maxSubIdx = num;
-          }
-        }
-      });
-      const nextRepIdx = maxSubIdx + 1;
-
+      const nextRepIdx = nextReplies.length + 1;
       nextReplies.push({ 
         indexNum: `${post.index_num}-${nextRepIdx}`,
         author: myName, authorUid: generateUserUID(myName), text: text, time: getNowString() 
@@ -420,21 +874,16 @@
     }
   };
 
-  // -------------------------------------------------------------------------
-  // 🛠️ ユーティリティ関数
-  // -------------------------------------------------------------------------
   function generateUserUID(name) {
     let hash = 0; const str = (name || '名無し') + "my_secret_salt_2026";
     for (let i = 0; i < str.length; i++) { hash = (hash << 5) - hash + str.charCodeAt(i); hash |= 0; }
     return Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
   }
 
+  // 【デバッグ】英字率判定で空文字の場合のNaN・割る数0エラー回避を強化
   function isEnglishText(text) {
-    if (!text || text.trim().length === 0) return false;
-    const englishMatches = text.match(/[a-zA-Z]/g);
-    const totalLength = text.length;
-    if (!englishMatches || totalLength === 0) return false;
-    return (englishMatches.length / totalLength) >= 0.4;
+    if (!text || text.length === 0) return false;
+    return ((text.match(/[a-zA-Z]/g) || []).length / text.length) >= 0.4;
   }
 
   function getNowString() {
@@ -446,17 +895,15 @@
     if (!text) return "";
     let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     safeText = safeText.replace(/&gt;&gt;#([0-9\-]+)/g, (match, targetNum) => {
-      return `<span class="anchor-link" onclick="scrollToPostByTarget('#target_num_${targetNum}')">&gt;&gt;#${targetNum}</span>`;
+      return `<span class="anchor-link" onclick="scrollToPostByTarget('#${targetNum}')">&gt;&gt;#${targetNum}</span>`;
     });
     return safeText.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank">${url}</a>`);
   }
 
-  // -------------------------------------------------------------------------
-  // 🔄 UI描画ロジック
-  // -------------------------------------------------------------------------
   function loadRoomsList() {
     const select = document.getElementById('currentRoomSelect');
     if (!select) return;
+    select.innerHTML = '<option value="メインルーム">メインルーム</option>';
     
     let allRoomNamesSet = new Set(["メインルーム"]);
     Object.keys(roomsInfoData).forEach(r => allRoomNamesSet.add(r));
@@ -509,6 +956,7 @@
     }
   }
 
+  // ⏰ タイマー消去：【デバッグ】無限トリガー防止のため同期処理とは分離して投稿・起動時等限定での実行を推奨
   async function cleanOldPosts() {
     const nowTimestamp = new Date().getTime();
     const expiredPosts = allPostsData.filter(post => {
@@ -538,7 +986,7 @@
     if (isRoomFull) {
       document.getElementById('roomFullWarningMessage').style.display = "block";
       document.getElementById('inputText').disabled = true;
-      document.getElementById('inputText').placeholder = "この部屋は999個の投稿に達したため、親投稿は作成できません。下の各返信欄をご利用ください。";
+      document.getElementById('inputText').placeholder = "この部屋は999個の投稿に達したため、新しく親投稿は作成できません。下の各返信欄をご利用ください。";
       document.getElementById('pollCreatorBox').style.display = "none";
       document.getElementById('fileInputWrapper').style.display = "none";
       document.getElementById('timerSetupBox').style.display = "none";
@@ -563,16 +1011,13 @@
         const savedTextId = `saved_text_${sp.firebase_key}`;
         const isSavedExpanded = expandedTexts.includes(savedTextId);
         
-        const isStillExists = allPostsData.some(p => p.firebase_key === sp.firebase_key);
-        const deletedBadge = isStillExists ? "" : ` <span class="deleted-badge">[元の投稿は削除されました]</span>`;
-        
         item.innerHTML = `
           <div class="saved-post-meta">
-            <span>🚪 部屋: <b>${sp.room}</b> (#${sp.index_num})${deletedBadge}</span>
+            <span>🚪 部屋: <b>${sp.room}</b> (#${sp.index_num})</span>
             <span style="color:#ef4444; cursor:pointer; font-weight:bold;" onclick="removeSavedPost('${sp.firebase_key}')">解除 ❌</span>
           </div>
           <div style="font-weight:bold; color:#3182ce; font-size:11px; margin-bottom:2px;">👤 ${sp.author}:</div>
-          <div class="${isSavedExpanded ? '' : 'saved-text-collapsed'}" id="${savedTextId}" style="word-break:break-all; white-space:pre-wrap; line-height:1.4; ${!isStillExists ? 'opacity: 0.6;' : ''}">${linkify(sp.text || "[画像または投票のみ]")}</div>
+          <div class="${isSavedExpanded ? '' : 'saved-text-collapsed'}" id="${savedTextId}" style="word-break:break-all; white-space:pre-wrap; line-height:1.4;">${linkify(sp.text || "[画像または投票のみ]")}</div>
         `;
 
         savedListContainer.appendChild(item);
@@ -591,6 +1036,7 @@
 
     allPostsData.forEach(post => {
       if (post.text && post.text.includes('@')) {
+        // 【修正】共通の非表示リスト（hiddenRequestsData）に入っているものはスキップ
         if (hiddenRequestsData.includes(post.firebase_key)) return;
 
         const emItem = document.createElement('div'); 
@@ -608,6 +1054,7 @@
 
     const pinnedPosts = targetPosts.filter(p => p.is_pinned);
     const normalPosts = targetPosts.filter(p => !p.is_pinned);
+    // 【修正】メインタイムラインでも削除依頼中の投稿を全員の画面から消したい場合は、ここでフィルタを適用
     const finalDisplayPosts = [...pinnedPosts, ...normalPosts.slice().reverse()].filter(p => !hiddenRequestsData.includes(p.firebase_key));
 
     finalDisplayPosts.forEach(post => {
@@ -728,9 +1175,9 @@
         });
 
         repliesHtml += `
-          <div class="reply-form" style="margin-top:5px;">
+          <div class="reply-form">
             <input type="text" id="repInput_${post.firebase_key}" placeholder="この投稿に返信...">
-            <button onclick="window.addReply('${post.firebase_key}', '${post.firebase_key}')">返信</button>
+            <button onclick="addReply('${post.firebase_key}', '${post.firebase_key}')">返信</button>
           </div>
         </div>`;
         div.innerHTML += repliesHtml;
@@ -741,9 +1188,7 @@
     if(emergencyList.innerHTML === '') emergencyList.innerHTML = '<div style="color:#a0aec0; text-align:center; font-size:12px;">依頼はありません</div>';
   }
 
-  // -------------------------------------------------------------------------
-  // 同期・イベント処理
-  // -------------------------------------------------------------------------
+  // 🔄 Supabase のデータベースとフロント側変数を同期
   async function syncAndRefresh() {
     const { data: roomsData } = await supabaseClient.from('rooms').select('*');
     roomsInfoData = {};
@@ -758,23 +1203,30 @@
     refreshList();
   }
 
+  // 🚀 初期起動・リアルタイムリスナーの登録
   window.addEventListener('DOMContentLoaded', async () => {
     const savedName = localStorage.getItem('myWikiUsername11');
     if (savedName) document.getElementById('usernameInput').value = savedName;
+    const savedUrl = localStorage.getItem('myPanicUrl11');
+    if (savedUrl) document.getElementById('panicUrlInput').value = savedUrl;
+    if (localStorage.getItem('myBoardTheme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
+    // 【修正】起動時に共通の削除依頼リスト(hidden_requests)を初回取得
     const { data: hiddenData } = await supabaseClient.from('hidden_requests').select('post_key');
     if (hiddenData) {
       hiddenRequestsData = hiddenData.map(h => h.post_key);
     }
 
+    // 初回読み込み・クリーニング
     await syncAndRefresh();
     await cleanOldPosts();
 
-    // 🚀 リアルタイム同期のサブスクリプション登録
+    // 🔥 全ユーザー間でデータを同期するリアルタイム設定
     supabaseClient
       .channel('room-and-posts-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, syncAndRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, syncAndRefresh)
+      // 【修正】hidden_requestsテーブルへの追加アクションもリアルタイム検知して瞬時に全員のリストから消す
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hidden_requests' }, (payload) => {
          if (payload.new && payload.new.post_key && !hiddenRequestsData.includes(payload.new.post_key)) {
            hiddenRequestsData.push(payload.new.post_key);
