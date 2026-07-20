@@ -540,16 +540,34 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
     }
   };
 
-  window.createNewRoom = () => {
+  window.createNewRoom = async () => {
     const nameInput = document.getElementById('newRoomName');
     const pinInput = document.getElementById('newRoomPin');
-    const roomName = nameInput.value.trim(); const pin = pinInput.value.trim();
-    
+    const roomName = nameInput.value.trim();
+    const pin = pinInput.value.trim();
+
     if (!roomName) return;
     if (hasNgWord(roomName)) {
-      alert("⚠️ 部屋名に不適切な言葉（NGワード）が含まれているため、作成できません。");
-      return;
+        alert("⚠️ 部屋名に不適切な言葉が含まれているため、作成できません。");
+        return;
     }
+    
+    // Supabaseの rooms テーブルに新しい部屋を追加
+    const { error } = await supabase.from('rooms').insert([
+        { room_name: roomName, password: pin || null }
+    ]);
+
+    if (error) {
+        alert("部屋の作成に失敗しました：" + error.message);
+    } else {
+        nameInput.value = "";
+        pinInput.value = "";
+        currentActiveRoom = roomName;
+        // 部屋作成が終わったら、自動的に部屋一覧を読み直し、画面を更新
+        await loadRoomsList();
+        refreshList();
+    }
+};
     if (isSystemMainRoom(roomName)) {
       alert("⚠️ 「メインルーム(数字)」という名前の部屋はシステム予約されているため、手動作成できません。");
       return;
@@ -622,6 +640,7 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
   window.addMemo = async () => {
   const el = document.getElementById('inputText');
   const name = document.getElementById('usernameInput').value.trim() || '名無し';
+  const text = el.value.trim();
     const roomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
     
     if (roomPosts.length >= 999) {
@@ -675,19 +694,24 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
 
     const newPost = {
     room: currentActiveRoom,
+    indexNum: 1, // ※後述の重要点参照
     author: name,
     authorUid: generateUserUID(name),
-    text: el.value,
+    time: getNowString(),
     timestamp: new Date().getTime(),
+    text: text,
     reactions: { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 },
     replies: []
   };
 
 const { error } = await supabase.from('posts').insert([newPost]);
+  
   if (error) {
-    alert("投稿に失敗しました：" + error.message);
+    console.error("投稿エラー:", error);
+    alert("投稿に失敗しました。");
   } else {
-    el.value = ''; // 投稿成功したら入力欄を空にする
+    el.value = ''; // 成功したら入力欄を空にする
+    // ここで saveToLocalStorage() は絶対に呼ばないでください！
   }
 };    await supabase.from('posts').insert(newPost);
     
