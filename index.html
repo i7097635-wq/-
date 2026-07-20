@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>掲示板</title>
-  <!-- 💾 Supabase JS SDK の読み込み -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
       --bg-color: #f8f9fa; --card-bg: #ffffff; --text-color: #333333;
@@ -343,7 +341,7 @@
       <li>投稿文、返信欄、および左側の「保存済み」一覧に含まれるURL（`http://` や `https://`）は自動でリンク化され、<b>クリックするだけでいつでも直接そのページにジャンプ可能</b>です。</li>
     </ul>
 
-    <h4><h4>🛡️ 荒らし連投対策システム</h4>
+    <h4>🛡️ 荒らし連投対策システム</h4>
     <ul>
       <li>同一の部屋で同じユーザーが5回連続して酷似した文章を連投した場合、システムが荒らしと判断し、連投された投稿を**自動で一斉削除**します（「草」単発などは除外されます）。</li>
     </ul>
@@ -374,24 +372,16 @@
 </div>
 
 <script>
-  // -------------------------------------------------------------------------
-  // ⚙️ Supabase 設定 (ここをお手持ちのプロジェクト情報に書き換えてください)
-  // -------------------------------------------------------------------------
-  const SUPABASE_URL = "https://czffquysuyfwwtimachk.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_OZbvA1KLZYk6IUp45D2YzQ_0KR13sn5";
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
   let selectedImageData = "";
   let currentActiveRoom = "メインルーム";
   let openedSpoilers = [];
   let expandedTexts = [];
   
-  let allPostsData = [];
-  let roomsInfoData = {};
-  
-  // 【修正】保存済みはlocalStorage、非表示(削除依頼)は共通化のためグローバル空配列に変更
+  let allPostsData = JSON.parse(localStorage.getItem('local_posts_data_v6') || '[]');
+  let roomsInfoData = JSON.parse(localStorage.getItem('local_rooms_data_v6') || '{}');
   let mySavedPostsData = JSON.parse(localStorage.getItem('local_saved_posts_data_v6') || '[]');
-  let hiddenRequestsData = []; 
+  // 管理者依頼枠から非表示にされた投稿キーのリスト
+  let hiddenRequestsData = JSON.parse(localStorage.getItem('local_hidden_requests_v6') || '[]');
 
   const NG_WORDS = ["ちんこ", "sex", "セックス", "ちんぽ", "ちんちん", "まんこ"];
 
@@ -427,8 +417,7 @@
     return (longer.length - costs[shorter.length]) / parseFloat(longer.length);
   }
 
-  // 🛡️ 荒らし防止：Supabaseと連動するため、DB削除処理に書き換え
-  async function checkAndCleanSpam(newPost) {
+  function checkAndCleanSpam(newPost) {
     const isWgrass = /^[wｗ草くさ]+$/i.test(newPost.text.trim());
     if (isWgrass) return;
 
@@ -436,7 +425,7 @@
     if (roomPosts.length < 5) return;
 
     const recent5 = roomPosts.slice(-5);
-    const sameUser = recent5.every(p => p.author_uid === newPost.author_uid);
+    const sameUser = recent5.every(p => p.authorUid === newPost.authorUid);
     if (!sameUser) return;
 
     let isSpam = true;
@@ -452,8 +441,9 @@
     }
 
     if (isSpam) {
-      const spamKeys = recent5.map(p => p.firebase_key);
-      await supabaseClient.from('posts').delete().in('firebase_key', spamKeys);
+      const spamKeys = recent5.map(p => p.firebaseKey);
+      allPostsData = allPostsData.filter(p => !spamKeys.includes(p.firebaseKey));
+      saveToLocalStorage();
       alert("🚨 荒らし防止システム：同一の部屋で5回連続の類似投稿を検知したため、連投された投稿を自動で一斉削除しました。");
     }
   }
@@ -464,8 +454,10 @@
   }
 
   function saveToLocalStorage() {
+    localStorage.setItem('local_posts_data_v6', JSON.stringify(allPostsData));
+    localStorage.setItem('local_rooms_data_v6', JSON.stringify(roomsInfoData));
     localStorage.setItem('local_saved_posts_data_v6', JSON.stringify(mySavedPostsData));
-    // 【修正】hidden_requestsのlocalStorageへの保存ロジックを除去
+    localStorage.setItem('local_hidden_requests_v6', JSON.stringify(hiddenRequestsData));
   }
 
   window.addEventListener('keydown', (e) => {
@@ -513,8 +505,7 @@
     }
     localStorage.setItem('myWikiUsername11', name);
     localStorage.setItem('myPanicUrl11', document.getElementById('panicUrlInput').value.trim());
-    // 【デバッグ】初期ロード前に変更された場合のクラッシュ防止ガード
-    if (allPostsData && allPostsData.length > 0) refreshList(); 
+    refreshList();
   };
 
   window.previewFile = () => {
@@ -546,8 +537,7 @@
     }
   };
 
-  // 📁 部屋作成をSupabaseに反映
-  window.createNewRoom = async () => {
+  window.createNewRoom = () => {
     const nameInput = document.getElementById('newRoomName');
     const pinInput = document.getElementById('newRoomPin');
     const roomName = nameInput.value.trim(); const pin = pinInput.value.trim();
@@ -566,23 +556,23 @@
       return;
     }
 
-    await supabaseClient.from('rooms').insert([{ name: roomName, pin: pin || null }]);
+    roomsInfoData[roomName] = { pin: pin || null };
     nameInput.value = ""; pinInput.value = ""; 
     currentActiveRoom = roomName;
+    saveToLocalStorage(); loadRoomsList(); refreshList();
   };
 
-  // 🔑 暗証番号設定をSupabaseに反映
-  window.editCurrentRoomPin = async () => {
+  window.editCurrentRoomPin = () => {
     if (isSystemMainRoom(currentActiveRoom)) {
-      alert("⚠️ メインルームシリーズに暗証番号を設定することはできません。");
+      alert("⚠️ メメインルームシリーズに暗証番号を設定することはできません。");
       return;
     }
     const currentPin = roomsInfoData[currentActiveRoom]?.pin || "設定なし";
     const newPin = prompt(`部屋「${currentActiveRoom}」の新しい暗証番号を入力してください（最大4桁）。\n現在の設定: ${currentPin}`);
     if (newPin === null) return;
     const trimmedPin = newPin.trim().substring(0, 4);
-
-    await supabaseClient.from('rooms').update({ pin: trimmedPin || null }).eq('name', currentActiveRoom);
+    roomsInfoData[currentActiveRoom].pin = trimmedPin || null;
+    saveToLocalStorage(); loadRoomsList();
     alert(trimmedPin ? `🔒 暗証番号を設定しました。` : "🔓 暗証番号を解除しました。");
   };
 
@@ -609,10 +599,11 @@
     deleteSpecificRoom(currentActiveRoom);
   };
 
-  async function deleteSpecificRoom(roomName) {
-    await supabaseClient.from('rooms').delete().eq('name', roomName);
+  function deleteSpecificRoom(roomName) {
+    delete roomsInfoData[roomName];
+    allPostsData = allPostsData.filter(p => p.room !== roomName);
     currentActiveRoom = "メインルーム";
-    loadRoomsList(); refreshList();
+    saveToLocalStorage(); loadRoomsList(); refreshList();
   }
 
   function getNextMainRoomName(currentName) {
@@ -625,19 +616,20 @@
     return "メインルーム2";
   }
 
-  // 📝 新規投稿をSupabaseへインサート
-  window.addMemo = async () => {
+  window.addMemo = () => {
     const roomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
     
     if (roomPosts.length >= 999) {
       if (isSystemMainRoom(currentActiveRoom)) {
         const nextRoomName = getNextMainRoomName(currentActiveRoom);
         if (!roomsInfoData[nextRoomName] && nextRoomName !== "メインルーム") {
-          await supabaseClient.from('rooms').insert([{ name: nextRoomName, pin: null }]);
+          roomsInfoData[nextRoomName] = { pin: null };
         }
         alert(`📌 この部屋は999投稿の限界に達しました。\n自動的に新しい部屋「${nextRoomName}」へ移行します！`);
         currentActiveRoom = nextRoomName;
-        loadRoomsList(); refreshList();
+        saveToLocalStorage();
+        loadRoomsList();
+        refreshList();
       } else {
         alert("⚠️ この部屋は999投稿の限界に達したため、新しく親投稿は作成できません。");
         return;
@@ -674,44 +666,43 @@
     if(!text.trim() && !selectedImageData && !pollData) return;
 
     const updatedRoomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-    const nextIndex = updatedRoomPosts.length > 0 ? Math.max(...updatedRoomPosts.map(p => p.index_num || 0)) + 1 : 1;
+    const nextIndex = updatedRoomPosts.length > 0 ? Math.max(...updatedRoomPosts.map(p => p.indexNum || 0)) + 1 : 1;
 
     const newPost = {
-      firebase_key: "key_" + new Date().getTime(),
+      id: "p_" + new Date().getTime(),
+      firebaseKey: "key_" + new Date().getTime(),
       room: currentActiveRoom,
-      index_num: nextIndex,
+      indexNum: nextIndex,
       author: name,
-      author_uid: generateUserUID(name),
+      authorUid: generateUserUID(name),
       time: getNowString(),
       timestamp: new Date().getTime(),
-      expire_hours: expireHours,
+      expireHours: expireHours,
       text: text,
       image: selectedImageData,
-      is_spoiler: isSpoiler,
-      is_pinned: false,
+      isSpoiler: isSpoiler,
+      isPinned: false,
       reactions: { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 },
       poll: pollData,
       replies: []
     };
 
-    const { error } = await supabaseClient.from('posts').insert([newPost]);
-    if (error) {
-      alert("投稿に失敗しました: " + error.message);
-      return;
-    }
+    allPostsData.push(newPost);
+    saveToLocalStorage();
     
     checkAndCleanSpam(newPost);
 
     el.value = ''; window.cancelImage(); document.getElementById('isSpoilerCheck').checked = false;
     document.getElementById('pollOpt1').value = ""; document.getElementById('pollOpt2').value = "";
     document.getElementById('pollOpt3').value = ""; document.getElementById('pollOpt4').value = "";
+    refreshList();
   };
 
   window.savePostToMyFolder = (fbKey) => {
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
     if (!post) return;
     
-    if (mySavedPostsData.some(p => p.firebase_key === fbKey)) {
+    if (mySavedPostsData.some(p => p.firebaseKey === fbKey)) {
       alert("💡 この投稿はすでに保存されています。");
       return;
     }
@@ -725,58 +716,45 @@
   };
 
   window.removeSavedPost = (fbKey) => {
-    mySavedPostsData = mySavedPostsData.filter(p => p.firebase_key !== fbKey);
+    mySavedPostsData = mySavedPostsData.filter(p => p.firebaseKey !== fbKey);
     saveToLocalStorage();
     refreshList();
   };
 
-  // 【修正】削除依頼の非表示リストをSupabase(共通)に送信・反映する
-  window.hideDeleteRequest = async (fbKey) => {
-    if (!confirm("この削除依頼を一覧から非表示にしますか？（全員の画面から非表示になります）")) return;
-    
-    const { error } = await supabaseClient.from('hidden_requests').insert([{ post_key: fbKey }]);
-    if (error) {
-      console.error("非表示依頼の同期に失敗しました:", error);
-      return;
-    }
-    if (!hiddenRequestsData.includes(fbKey)) {
-      hiddenRequestsData.push(fbKey);
-      refreshList();
-    }
+  // 💡 削除依頼枠から対象項目を非表示にする（元の部屋コメントは削除しない）
+  window.hideDeleteRequest = (fbKey) => {
+    if (!confirm("この削除依頼を一覧から非表示にしますか？（部屋の投稿自体は削除されません）")) return;
+    hiddenRequestsData.push(fbKey);
+    saveToLocalStorage();
+    refreshList();
   };
 
-  // 📊 投票をSupabaseに反映
-  window.castVote = async (fbKey, optionId) => {
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
+  window.castVote = (fbKey, optionId) => {
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
     if (!post || !post.poll) return;
     const name = document.getElementById('usernameInput').value.trim() || '名無し';
     const myUid = generateUserUID(name);
-    
-    let nextPoll = JSON.parse(JSON.stringify(post.poll));
-    const alreadyVotedOptions = nextPoll.options.filter(opt => opt.voters.includes(myUid));
-    const targetOption = nextPoll.options.find(opt => opt.id === optionId);
+    const alreadyVotedOptions = post.poll.options.filter(opt => opt.voters.includes(myUid));
+    const targetOption = post.poll.options.find(opt => opt.id === optionId);
     if (!targetOption) return;
 
     if (targetOption.voters.includes(myUid)) {
       targetOption.voters = targetOption.voters.filter(uid => uid !== myUid);
     } else {
-      const max = nextPoll.maxChoices;
+      const max = post.poll.maxChoices;
       if (max !== 0 && alreadyVotedOptions.length >= max) {
         if (max === 1) {
-          nextPoll.options.forEach(opt => opt.voters = opt.voters.filter(uid => uid !== myUid));
+          post.poll.options.forEach(opt => opt.voters = opt.voters.filter(uid => uid !== myUid));
           targetOption.voters.push(myUid);
         } else { alert(`⚠️ 最大 ${max} つまでしか選択できません。`); return; }
       } else { targetOption.voters.push(myUid); }
     }
-
-    await supabaseClient.from('posts').update({ poll: nextPoll }).eq('firebase_key', fbKey);
+    saveToLocalStorage(); refreshList();
   };
 
-  window.togglePin = async (fbKey) => {
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
-    if(post) { 
-      await supabaseClient.from('posts').update({ is_pinned: !post.is_pinned }).eq('firebase_key', fbKey);
-    }
+  window.togglePin = (fbKey) => {
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
+    if(post) { post.isPinned = !post.isPinned; saveToLocalStorage(); refreshList(); }
   };
 
   window.translateText = async (elementId) => {
@@ -812,9 +790,10 @@
     window.speechSynthesis.speak(utterance);
   };
 
-  window.deleteMemo = async (fbKey) => {
+  window.deleteMemo = (fbKey) => {
     if (!confirm('投稿を削除しますか？')) return;
-    await supabaseClient.from('posts').delete().eq('firebase_key', fbKey);
+    allPostsData = allPostsData.filter(p => p.firebaseKey !== fbKey);
+    saveToLocalStorage(); refreshList();
   };
 
   window.revealSpoiler = (id) => { openedSpoilers.push(id); refreshList(); };
@@ -826,12 +805,12 @@
     refreshList();
   };
 
-  window.toggleReaction = async (fbKey, emoji) => {
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
+  window.toggleReaction = (fbKey, emoji) => {
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
     if(post) {
-      let nextReactions = post.reactions ? { ...post.reactions } : { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 };
-      nextReactions[emoji] = (nextReactions[emoji] || 0) + 1;
-      await supabaseClient.from('posts').update({ reactions: nextReactions }).eq('firebase_key', fbKey);
+      if(!post.reactions) post.reactions = { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 };
+      post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
+      saveToLocalStorage(); refreshList();
     }
   };
 
@@ -840,7 +819,7 @@
     if(input) { input.value = `>>#${targetNum} ` + input.value; input.focus(); }
   };
 
-  window.addReply = async (fbKey, postId) => {
+  window.addReply = (fbKey, postId) => {
     const input = document.getElementById(`repInput_${postId}`); const text = input.value.trim();
     if (!text) return;
     const myName = document.getElementById('usernameInput').value.trim() || '名無し';
@@ -850,28 +829,22 @@
       return;
     }
 
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
     if(post) {
-      let nextReplies = post.replies ? [...post.replies] : [];
-      const nextRepIdx = nextReplies.length + 1;
-      nextReplies.push({ 
-        indexNum: `${post.index_num}-${nextRepIdx}`,
+      if(!post.replies) post.replies = [];
+      const nextRepIdx = post.replies.length + 1;
+      post.replies.push({ 
+        indexNum: `${post.indexNum}-${nextRepIdx}`,
         author: myName, authorUid: generateUserUID(myName), text: text, time: getNowString() 
       });
-
-      await supabaseClient.from('posts').update({ replies: nextReplies }).eq('firebase_key', fbKey);
-      input.value = "";
+      saveToLocalStorage(); input.value = ""; refreshList();
     }
   };
 
-  window.deleteReply = async (fbKey, rIdx) => {
+  window.deleteReply = (fbKey, rIdx) => {
     if(!confirm('返信を削除しますか？')) return;
-    const post = allPostsData.find(p => p.firebase_key === fbKey);
-    if(post && post.replies) {
-      let nextReplies = [...post.replies];
-      nextReplies.splice(rIdx, 1);
-      await supabaseClient.from('posts').update({ replies: nextReplies }).eq('firebase_key', fbKey);
-    }
+    const post = allPostsData.find(p => p.firebaseKey === fbKey);
+    if(post && post.replies) { post.replies.splice(rIdx, 1); saveToLocalStorage(); refreshList(); }
   };
 
   function generateUserUID(name) {
@@ -880,9 +853,8 @@
     return Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
   }
 
-  // 【デバッグ】英字率判定で空文字の場合のNaN・割る数0エラー回避を強化
   function isEnglishText(text) {
-    if (!text || text.length === 0) return false;
+    if (!text) return false;
     return ((text.match(/[a-zA-Z]/g) || []).length / text.length) >= 0.4;
   }
 
@@ -902,7 +874,6 @@
 
   function loadRoomsList() {
     const select = document.getElementById('currentRoomSelect');
-    if (!select) return;
     select.innerHTML = '<option value="メインルーム">メインルーム</option>';
     
     let allRoomNamesSet = new Set(["メインルーム"]);
@@ -956,26 +927,24 @@
     }
   }
 
-  // ⏰ タイマー消去：【デバッグ】無限トリガー防止のため同期処理とは分離して投稿・起動時等限定での実行を推奨
-  async function cleanOldPosts() {
+  function cleanOldPosts() {
     const nowTimestamp = new Date().getTime();
-    const expiredPosts = allPostsData.filter(post => {
-      if (post.expire_hours && post.expire_hours !== "never" && post.timestamp) {
-        const limitMs = parseInt(post.expire_hours) * 60 * 60 * 1000;
-        return (nowTimestamp - post.timestamp) >= limitMs;
+    let isChanged = false;
+    allPostsData = allPostsData.filter(post => {
+      if (post.expireHours && post.expireHours !== "never" && post.timestamp) {
+        const limitMs = parseInt(post.expireHours) * 60 * 60 * 1000;
+        const shouldKeep = (nowTimestamp - post.timestamp) < limitMs;
+        if (!shouldKeep) isChanged = true;
+        return shouldKeep;
       }
-      return false;
+      return true;
     });
-
-    if (expiredPosts.length > 0) {
-      const expiredKeys = expiredPosts.map(p => p.firebase_key);
-      await supabaseClient.from('posts').delete().in('firebase_key', expiredKeys);
-    }
+    if (isChanged) saveToLocalStorage();
   }
 
   function refreshList() {
-    const list = document.getElementById('memoList'); if (!list) return;
-    list.innerHTML = '';
+    cleanOldPosts();
+    const list = document.getElementById('memoList'); list.innerHTML = '';
     const emergencyList = document.getElementById('emergencyList'); emergencyList.innerHTML = '';
     const savedListContainer = document.getElementById('savedPostsListContainer'); savedListContainer.innerHTML = '';
 
@@ -1008,13 +977,13 @@
         const item = document.createElement('div');
         item.className = 'saved-post-item';
         
-        const savedTextId = `saved_text_${sp.firebase_key}`;
+        const savedTextId = `saved_text_${sp.firebaseKey}`;
         const isSavedExpanded = expandedTexts.includes(savedTextId);
         
         item.innerHTML = `
           <div class="saved-post-meta">
-            <span>🚪 部屋: <b>${sp.room}</b> (#${sp.index_num})</span>
-            <span style="color:#ef4444; cursor:pointer; font-weight:bold;" onclick="removeSavedPost('${sp.firebase_key}')">解除 ❌</span>
+            <span>🚪 部屋: <b>${sp.room}</b> (#${sp.indexNum})</span>
+            <span style="color:#ef4444; cursor:pointer; font-weight:bold;" onclick="removeSavedPost('${sp.firebaseKey}')">解除 ❌</span>
           </div>
           <div style="font-weight:bold; color:#3182ce; font-size:11px; margin-bottom:2px;">👤 ${sp.author}:</div>
           <div class="${isSavedExpanded ? '' : 'saved-text-collapsed'}" id="${savedTextId}" style="word-break:break-all; white-space:pre-wrap; line-height:1.4;">${linkify(sp.text || "[画像または投票のみ]")}</div>
@@ -1034,54 +1003,53 @@
       });
     }
 
+    // 💡 全ての投稿から「@」が含まれるコメントを抽出し、非表示リストに入っていないものだけ依頼欄に表示する
     allPostsData.forEach(post => {
       if (post.text && post.text.includes('@')) {
-        // 【修正】共通の非表示リスト（hiddenRequestsData）に入っているものはスキップ
-        if (hiddenRequestsData.includes(post.firebase_key)) return;
+        if (hiddenRequestsData.includes(post.firebaseKey)) return; // 非表示済みのものは除外
 
         const emItem = document.createElement('div'); 
         emItem.className = 'emergency-item';
         emItem.innerHTML = `
           <div>
-            ⚠️ <b>部屋:</b> 「${post.room}」 (#${post.index_num})<br>
+            ⚠️ <b>部屋:</b> 「${post.room}」 (#${post.indexNum})<br>
             💬 <b>内容:</b> <span style="font-style:italic;">${linkify(post.text)}</span>
           </div>
-          <button class="emergency-del-req-btn" onclick="hideDeleteRequest('${post.firebase_key}')">❌ 一覧から消去</button>
+          <button class="emergency-del-req-btn" onclick="hideDeleteRequest('${post.firebaseKey}')">❌ 一覧から消去</button>
         `;
         emergencyList.appendChild(emItem);
       }
     });
 
-    const pinnedPosts = targetPosts.filter(p => p.is_pinned);
-    const normalPosts = targetPosts.filter(p => !p.is_pinned);
-    // 【修正】メインタイムラインでも削除依頼中の投稿を全員の画面から消したい場合は、ここでフィルタを適用
-    const finalDisplayPosts = [...pinnedPosts, ...normalPosts.slice().reverse()].filter(p => !hiddenRequestsData.includes(p.firebase_key));
+    const pinnedPosts = targetPosts.filter(p => p.isPinned);
+    const normalPosts = targetPosts.filter(p => !p.isPinned);
+    const finalDisplayPosts = [...pinnedPosts, ...normalPosts.slice().reverse()];
 
     finalDisplayPosts.forEach(post => {
       const div = document.createElement('div');
-      div.className = 'post' + (post.is_pinned ? ' pinned' : '') + (post.is_spoiler ? ' spoiler-border' : '');
-      div.id = `target_num_${post.index_num}`;
+      div.className = 'post' + (post.isPinned ? ' pinned' : '') + (post.isSpoiler ? ' spoiler-border' : '');
+      div.id = `target_num_${post.indexNum}`;
 
       div.innerHTML = `
         <div class="post-control-bar">
-          <button class="pin-btn" onclick="togglePin('${post.firebase_key}')">${post.is_pinned ? '📌 固定解除' : '📌 ピン留め'}</button>
-          <button class="delete-btn" onclick="deleteMemo('${post.firebase_key}')">❌ 削除</button>
+          <button class="pin-btn" onclick="togglePin('${post.firebaseKey}')">${post.isPinned ? '📌 固定解除' : '📌 ピン留め'}</button>
+          <button class="delete-btn" onclick="deleteMemo('${post.firebaseKey}')">❌ 削除</button>
         </div>
         <div class="post-header">
           <span class="post-author">
-            <span class="post-index-num">#${post.index_num}</span> 
-            👤 ${post.author}<span class="user-uid">ID:${post.author_uid}</span>
+            <span class="post-index-num">#${post.indexNum}</span> 
+            👤 ${post.author}<span class="user-uid">ID:${post.authorUid}</span>
           </span>
           <span class="post-time">${post.time}</span>
         </div>
       `;
 
-      if (post.is_spoiler && !openedSpoilers.includes(post.firebase_key)) {
-        div.innerHTML += `<button style="width:100%; padding:15px; background:#fefbeb; border:2px dashed #fef08a; border-radius:6px; color:#b45309; font-weight:bold; cursor:pointer;" onclick="revealSpoiler('${post.firebase_key}')">⚠️ ワンクッション投稿を表示する</button>`;
+      if (post.isSpoiler && !openedSpoilers.includes(post.id)) {
+        div.innerHTML += `<button style="width:100%; padding:15px; background:#fefbeb; border:2px dashed #fef08a; border-radius:6px; color:#b45309; font-weight:bold; cursor:pointer;" onclick="revealSpoiler('${post.id}')">⚠️ ワンクッション投稿を表示する</button>`;
       } else {
-        const textId = `text_main_${post.firebase_key}`;
+        const textId = `text_main_${post.id}`;
         const lineCount = (post.text || "").split('\n').length;
-        const isCollapsed = lineCount > 10 && !expandedTexts.includes(post.firebase_key);
+        const isCollapsed = lineCount > 10 && !expandedTexts.includes(post.id);
         
         let contentHtml = `<div class="post-content-container">`;
         if (post.text && post.text.trim() !== "") {
@@ -1092,7 +1060,7 @@
           }, 0);
 
           if (lineCount > 10) {
-            contentHtml += `<button class="text-toggle-btn" onclick="toggleTextCollapse('${post.firebase_key}')">${isCollapsed ? '＋ 続きを読む' : '－ 閉じる'}</button>`;
+            contentHtml += `<button class="text-toggle-btn" onclick="toggleTextCollapse('${post.id}')">${isCollapsed ? '＋ 続きを読む' : '－ 閉じる'}</button>`;
           }
         }
 
@@ -1104,7 +1072,7 @@
             const pct = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
             const hasMyVote = opt.voters.includes(myUid);
             contentHtml += `
-              <div class="poll-option-item" onclick="castVote('${post.firebase_key}', ${opt.id})">
+              <div class="poll-option-item" onclick="castVote('${post.firebaseKey}', ${opt.id})">
                 <div class="poll-option-track ${hasMyVote ? 'voted' : ''}">
                   <div class="poll-bar-fill" style="width: ${pct}%;"></div>
                   <div class="poll-option-text">${hasMyVote ? '☑️ ' : '⬜️ '}${linkify(opt.text)}</div>
@@ -1119,22 +1087,22 @@
         contentHtml += `</div>`;
         div.innerHTML += contentHtml;
 
-        if (post.is_spoiler) {
-          div.innerHTML += `<div style="text-align:right; margin-top:5px;"><span style="font-size:11px; color:#d69e2e; cursor:pointer; font-weight:bold; text-decoration:underline;" onclick="hideSpoiler('${post.firebase_key}')">⚠️ 再び隠す</span></div>`;
+        if (post.isSpoiler) {
+          div.innerHTML += `<div style="text-align:right; margin-top:5px;"><span style="font-size:11px; color:#d69e2e; cursor:pointer; font-weight:bold; text-decoration:underline;" onclick="hideSpoiler('${post.id}')">⚠️ 再び隠す</span></div>`;
         }
 
         const emojis = ["❤️", "👍", "😆", "😢", "🎉"];
         let reactionBtns = "";
         emojis.forEach(e => {
-          reactionBtns += `<button class="react-btn" onclick="toggleReaction('${post.firebase_key}', '${e}')">${e} <span>${(post.reactions && post.reactions[e]) || 0}</span></button>`;
+          reactionBtns += `<button class="react-btn" onclick="toggleReaction('${post.firebaseKey}', '${e}')">${e} <span>${(post.reactions && post.reactions[e]) || 0}</span></button>`;
         });
 
         div.innerHTML += `
           <div class="post-action-zone">
             <div class="reaction-buttons">${reactionBtns}</div>
             <div class="right-actions">
-              <button class="save-post-btn" onclick="savePostToMyFolder('${post.firebase_key}')">💾 保存</button>
-              <button class="reply-action-btn" style="background:#f1f5f9; color:#333; padding:3px 6px; border-radius:4px; font-size:11px; border:1px solid #cbd5e0;" onclick="setReplyTarget('${post.firebase_key}', '${post.index_num}')">💬 返信</button>
+              <button class="save-post-btn" onclick="savePostToMyFolder('${post.firebaseKey}')">💾 保存</button>
+              <button class="reply-action-btn" style="background:#f1f5f9; color:#333; padding:3px 6px; border-radius:4px; font-size:11px; border:1px solid #cbd5e0;" onclick="setReplyTarget('${post.id}', '${post.indexNum}')">💬 返信</button>
               <button class="tts-btn" onclick="speakText('${textId}')">🗣️</button>
               <button class="translate-btn" onclick="translateText('${textId}')">🌐 翻訳</button>
             </div>
@@ -1143,7 +1111,7 @@
 
         let repliesHtml = `<div class="replies-box">`;
         (post.replies || []).forEach((rep, rIdx) => {
-          const repTextId = `text_rep_${post.firebase_key}_${rIdx}`;
+          const repTextId = `text_rep_${post.id}_${rIdx}`;
           const repLineCount = (rep.text || "").split('\n').length;
           const isRepCollapsed = repLineCount > 10 && !expandedTexts.includes(repTextId);
 
@@ -1155,9 +1123,9 @@
                   👤 ${rep.author}<span class="user-uid" style="font-size:9px;">ID:${rep.authorUid}</span>
                 </span>
                 <div class="reply-time-box">
-                  <button class="reply-action-btn" onclick="setReplyTarget('${post.firebase_key}', '${rep.indexNum}')">💬</button>
+                  <button class="reply-action-btn" onclick="setReplyTarget('${post.id}', '${rep.indexNum}')">💬</button>
                   <span class="reply-time">${rep.time}</span>
-                  <button class="reply-del-btn" onclick="deleteReply('${post.firebase_key}', ${rIdx})">❌</button>
+                  <button class="reply-del-btn" onclick="deleteReply('${post.firebaseKey}', ${rIdx})">❌</button>
                 </div>
               </div>
               <div class="reply-text ${isRepCollapsed ? 'text-collapsed' : ''}" id="${repTextId}">${linkify(rep.text)}</div>
@@ -1176,8 +1144,8 @@
 
         repliesHtml += `
           <div class="reply-form">
-            <input type="text" id="repInput_${post.firebase_key}" placeholder="この投稿に返信...">
-            <button onclick="addReply('${post.firebase_key}', '${post.firebase_key}')">返信</button>
+            <input type="text" id="repInput_${post.id}" placeholder="この投稿に返信...">
+            <button onclick="addReply('${post.firebaseKey}', '${post.id}')">返信</button>
           </div>
         </div>`;
         div.innerHTML += repliesHtml;
@@ -1188,53 +1156,13 @@
     if(emergencyList.innerHTML === '') emergencyList.innerHTML = '<div style="color:#a0aec0; text-align:center; font-size:12px;">依頼はありません</div>';
   }
 
-  // 🔄 Supabase のデータベースとフロント側変数を同期
-  async function syncAndRefresh() {
-    const { data: roomsData } = await supabaseClient.from('rooms').select('*');
-    roomsInfoData = {};
-    if (roomsData) {
-      roomsData.forEach(r => { roomsInfoData[r.name] = { pin: r.pin }; });
-    }
+  const savedName = localStorage.getItem('myWikiUsername11');
+  if (savedName) document.getElementById('usernameInput').value = savedName;
+  const savedUrl = localStorage.getItem('myPanicUrl11');
+  if (savedUrl) document.getElementById('panicUrlInput').value = savedUrl;
+  if (localStorage.getItem('myBoardTheme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
-    const { data: postsData } = await supabaseClient.from('posts').select('*');
-    allPostsData = postsData || [];
-
-    loadRoomsList();
-    refreshList();
-  }
-
-  // 🚀 初期起動・リアルタイムリスナーの登録
-  window.addEventListener('DOMContentLoaded', async () => {
-    const savedName = localStorage.getItem('myWikiUsername11');
-    if (savedName) document.getElementById('usernameInput').value = savedName;
-    const savedUrl = localStorage.getItem('myPanicUrl11');
-    if (savedUrl) document.getElementById('panicUrlInput').value = savedUrl;
-    if (localStorage.getItem('myBoardTheme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-
-    // 【修正】起動時に共通の削除依頼リスト(hidden_requests)を初回取得
-    const { data: hiddenData } = await supabaseClient.from('hidden_requests').select('post_key');
-    if (hiddenData) {
-      hiddenRequestsData = hiddenData.map(h => h.post_key);
-    }
-
-    // 初回読み込み・クリーニング
-    await syncAndRefresh();
-    await cleanOldPosts();
-
-    // 🔥 全ユーザー間でデータを同期するリアルタイム設定
-    supabaseClient
-      .channel('room-and-posts-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, syncAndRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, syncAndRefresh)
-      // 【修正】hidden_requestsテーブルへの追加アクションもリアルタイム検知して瞬時に全員のリストから消す
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hidden_requests' }, (payload) => {
-         if (payload.new && payload.new.post_key && !hiddenRequestsData.includes(payload.new.post_key)) {
-           hiddenRequestsData.push(payload.new.post_key);
-           refreshList();
-         }
-      })
-      .subscribe();
-  });
+  loadRoomsList(); refreshList();
 </script>
 </body>
 </html>
