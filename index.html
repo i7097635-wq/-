@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supabase掲示板アプリ（デバッグ・安定版）</title>
+  <title>Supabase掲示板アプリ（完全デバッグ版）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -37,7 +37,7 @@
     }
     .sidebar-header { padding: 15px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
     .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02); }
-    .sidebar-tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; cursor: pointer; border: none; background: none; color: var(--text-color); font-weight: bold; }
+    .sidebar-tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; cursor: pointer; border: none; background: none; color: var(--text-color); font-weight: bold; }
     .sidebar-tab.active { border-bottom: 2px solid var(--primary-color); color: var(--primary-color); background: var(--card-bg); }
     .sidebar-content { flex: 1; overflow-y: auto; padding: 10px; }
     
@@ -80,13 +80,14 @@
   <!-- サイドバー -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <span>💬 掲示板メニュー <span id="connBadge" class="connection-status status-ng">未接続</span></span>
+      <span>💬 掲示板 <span id="connBadge" class="connection-status status-ng">未接続</span></span>
       <button onclick="toggleDarkMode()" style="font-size:11px; padding:2px 6px;">🌓</button>
     </div>
     <div class="sidebar-tabs">
       <button class="sidebar-tab active" onclick="switchSidebarTab('rooms')" id="tabBtn_rooms">部屋</button>
-      <button class="sidebar-tab" onclick="switchSidebarTab('saved')" id="tabBtn_saved">保存済み</button>
+      <button class="sidebar-tab" onclick="switchSidebarTab('saved')" id="tabBtn_saved">保存</button>
       <button class="sidebar-tab" onclick="switchSidebarTab('emergency')" id="tabBtn_emergency">依頼</button>
+      <button class="sidebar-tab" onclick="switchSidebarTab('escapeSettings')" id="tabBtn_escapeSettings">🚨脱出</button>
     </div>
     <div class="sidebar-content" id="sidebarContent_rooms">
       <div style="margin-bottom: 10px; display: flex; gap: 5px;">
@@ -101,6 +102,13 @@
     <div class="sidebar-content" id="sidebarContent_emergency" style="display: none;">
       <div style="font-size:11px; color:#64748b; margin-bottom:8px;">管理者への部屋削除・修正依頼など（@を含む投稿）</div>
       <div id="emergencyList"></div>
+    </div>
+    <!-- 緊急脱出設定タブ -->
+    <div class="sidebar-content" id="sidebarContent_escapeSettings" style="display: none;">
+      <div style="font-size:12px; font-weight:bold; margin-bottom:6px;">🚨 緊急脱出設定</div>
+      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">文字入力欄以外でEnterキーを押すと、設定したURLへ瞬時にジャンプします（未設定時はGoogle）。</div>
+      <input type="text" id="escapeUrlInput" placeholder="https://www.google.com" style="font-size:12px; margin-bottom:6px;">
+      <button class="primary" onclick="saveEscapeUrl()" style="font-size:12px; width:100%;">設定を保存</button>
     </div>
   </div>
 
@@ -166,7 +174,36 @@
     let selectedImageData = null;
     let openedSpoilers = [];
     let isPollCreating = false;
-    let isFetching = false; // 非同期競合ブロック用フラグ
+    let isFetching = false;
+
+    // 🚨 緊急脱出システムのキーボードリスナー
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const activeEl = document.activeElement;
+        const isInputFocused = activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT');
+        if (!isInputFocused) {
+          e.preventDefault();
+          const customUrl = localStorage.getItem('myEmergencyEscapeUrl11') || 'https://www.google.com';
+          window.location.replace(customUrl);
+        }
+      }
+    });
+
+    function saveEscapeUrl() {
+      const url = document.getElementById('escapeUrlInput').value.trim();
+      if (url) {
+        localStorage.setItem('myEmergencyEscapeUrl11', url);
+        alert("🚨 緊急脱出URLを保存しました！");
+      } else {
+        localStorage.removeItem('myEmergencyEscapeUrl11');
+        alert("🚨 緊急脱出URLをクリアしました（デフォルトのGoogleに戻ります）");
+      }
+    }
+
+    const savedEscapeUrl = localStorage.getItem('myEmergencyEscapeUrl11');
+    if (savedEscapeUrl) {
+      document.getElementById('escapeUrlInput').value = savedEscapeUrl;
+    }
 
     // 初期化 & リアルタイム接続
     async function initApp() {
@@ -176,15 +213,10 @@
         
         await fetchRemoteData();
         
-        // リアルタイムリスナーの登録（posts と rooms の変更を監視）
         supabaseClient
           .channel('public:board_all_changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
-            fetchRemoteData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
-            fetchRemoteData();
-          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => { fetchRemoteData(); })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => { fetchRemoteData(); })
           .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
               badge.innerText = "Supabase連動中";
@@ -209,14 +241,9 @@
     async function fetchRemoteData() {
       if (!supabaseClient || isFetching) return;
       isFetching = true;
-      
       try {
         const { data: posts, error: pError } = await supabaseClient.from('posts').select('*');
-        if (!pError && posts) {
-          allPostsData = posts;
-        } else if (pError) {
-          console.error("Posts fetch error:", pError.message);
-        }
+        if (!pError && posts) allPostsData = posts;
         
         const { data: rooms, error: rError } = await supabaseClient.from('rooms').select('*');
         if (!rError && rooms) {
@@ -224,10 +251,7 @@
           rooms.forEach(r => { newRoomsInfo[r.name] = { pin: r.pin }; });
           if (!newRoomsInfo["メインルーム"]) newRoomsInfo["メインルーム"] = { pin: null };
           roomsInfoData = newRoomsInfo;
-        } else if (rError) {
-          console.error("Rooms fetch error:", rError.message);
         }
-        
         loadRoomsList();
         refreshList();
       } catch (err) {
@@ -239,12 +263,12 @@
 
     async function savePostToBackend(post) {
       allPostsData.push(post);
-      refreshList(); // 楽観的UI更新
+      refreshList();
       if (supabaseClient) {
         const { error } = await supabaseClient.from('posts').upsert(post);
         if (error) {
           alert("⚠️ サーバーへの保存に失敗しました: " + error.message);
-          fetchRemoteData(); // 失敗時は再取得して整合性を戻す
+          fetchRemoteData();
         }
       } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
@@ -252,13 +276,10 @@
     }
 
     async function updatePostInBackend(post) {
-      refreshList(); // 楽観的UI更新
+      refreshList();
       if (supabaseClient) {
         const { error } = await supabaseClient.from('posts').upsert(post);
-        if (error) {
-          console.error("Update error:", error.message);
-          fetchRemoteData();
-        }
+        if (error) fetchRemoteData();
       } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
       }
@@ -266,13 +287,10 @@
 
     async function removePostFromBackend(fbKey) {
       allPostsData = allPostsData.filter(p => p.firebaseKey !== fbKey);
-      refreshList(); // 楽観的UI更新
+      refreshList();
       if (supabaseClient) {
         const { error } = await supabaseClient.from('posts').delete().eq('firebaseKey', fbKey);
-        if (error) {
-          alert("⚠️ 削除に失敗しました: " + error.message);
-          fetchRemoteData();
-        }
+        if (error) fetchRemoteData();
       } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
       }
@@ -282,8 +300,7 @@
       roomsInfoData[rName] = { pin: pinVal };
       loadRoomsList();
       if (supabaseClient) {
-        const { error } = await supabaseClient.from('rooms').upsert({ name: rName, pin: pinVal });
-        if (error) alert("⚠️ ルーム保存エラー: " + error.message);
+        await supabaseClient.from('rooms').upsert({ name: rName, pin: pinVal });
       } else {
         localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
       }
@@ -295,7 +312,6 @@
       currentActiveRoom = "メインルーム";
       loadRoomsList();
       refreshList();
-      
       if (supabaseClient) {
         await supabaseClient.from('rooms').delete().eq('name', roomName);
         await supabaseClient.from('posts').delete().eq('room', roomName);
@@ -306,7 +322,7 @@
     }
 
     function switchSidebarTab(tabName) {
-      ['rooms', 'saved', 'emergency'].forEach(t => {
+      ['rooms', 'saved', 'emergency', 'escapeSettings'].forEach(t => {
         document.getElementById(`sidebarContent_${t}`).style.display = (t === tabName) ? 'block' : 'none';
         document.getElementById(`tabBtn_${t}`).className = 'sidebar-tab' + ((t === tabName) ? ' active' : '');
       });
@@ -392,7 +408,6 @@
       return "メインルーム2";
     }
 
-    // 画像圧縮（容量オーバー対策）
     window.handleImageSelect = (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -401,14 +416,10 @@
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
+          let width = img.width, height = img.height;
           const maxDim = 800;
-          if (width > height && width > maxDim) {
-            height *= maxDim / width; width = maxDim;
-          } else if (height > maxDim) {
-            width *= maxDim / height; height = maxDim;
-          }
+          if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
+          else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
           canvas.width = width; canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
@@ -433,13 +444,10 @@
 
     window.addMemo = () => {
       const roomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-      
       if (roomPosts.length >= 999) {
         if (isSystemMainRoom(currentActiveRoom)) {
           const nextRoomName = getNextMainRoomName(currentActiveRoom);
-          if (!roomsInfoData[nextRoomName]) {
-            saveRoomToBackend(nextRoomName, null);
-          }
+          if (!roomsInfoData[nextRoomName]) saveRoomToBackend(nextRoomName, null);
           alert(`📌 999投稿に達しました。新しい部屋「${nextRoomName}」へ自動移行します！`);
           currentActiveRoom = nextRoomName;
           loadRoomsList();
@@ -461,14 +469,7 @@
         const o1 = document.getElementById('pollOpt1Input').value.trim();
         const o2 = document.getElementById('pollOpt2Input').value.trim();
         if (q && o1 && o2) {
-          pollData = {
-            question: q,
-            options: [
-              { text: o1, votes: 0 },
-              { text: o2, votes: 0 }
-            ],
-            voters: []
-          };
+          pollData = { question: q, options: [{ text: o1, votes: 0 }, { text: o2, votes: 0 }], voters: [] };
         }
       }
 
@@ -495,7 +496,6 @@
       };
 
       savePostToBackend(newPost);
-
       el.value = '';
       window.cancelImage();
       document.getElementById('isSpoilerCheck').checked = false;
@@ -510,7 +510,6 @@
       const post = allPostsData.find(p => p.firebaseKey === fbKey);
       if (!post || !post.poll) return;
       const myUid = generateUserUID(document.getElementById('usernameInput').value.trim() || '名無し');
-      
       if (!post.poll.voters) post.poll.voters = [];
       if (post.poll.voters.includes(myUid)) {
         alert("⚠️ すでにこの投票に参加しています。");
@@ -550,10 +549,7 @@
 
     window.togglePin = (fbKey) => {
       const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post) {
-        post.isPinned = !post.isPinned;
-        updatePostInBackend(post);
-      }
+      if (post) { post.isPinned = !post.isPinned; updatePostInBackend(post); }
     };
 
     window.deleteMemo = (fbKey) => {
@@ -575,10 +571,7 @@
 
     window.setReplyTarget = (postId, targetNum) => {
       const input = document.getElementById(`repInput_${postId}`);
-      if (input) {
-        input.value = `>>#${targetNum} ` + input.value;
-        input.focus();
-      }
+      if (input) { input.value = `>>#${targetNum} ` + input.value; input.focus(); }
     };
 
     window.addReply = (fbKey, postId) => {
@@ -607,10 +600,7 @@
     window.deleteReply = (fbKey, rIdx) => {
       if (!confirm('返信を削除しますか？')) return;
       const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post && post.replies) {
-        post.replies.splice(rIdx, 1);
-        updatePostInBackend(post);
-      }
+      if (post && post.replies) { post.replies.splice(rIdx, 1); updatePostInBackend(post); }
     };
 
     window.translateText = async (elementId) => {
@@ -632,12 +622,8 @@
           data[0].forEach(sentence => { if (sentence[0]) translatedResult += sentence[0]; });
           targetEl.innerHTML = "🇯🇵 <b>[翻訳]:</b> " + linkify(translatedResult);
           targetEl.setAttribute('data-is-translated', 'true');
-        } else {
-          targetEl.innerText = "❌ 翻訳できませんでした";
-        }
-      } catch (e) {
-        targetEl.innerText = "❌ エラーが発生しました";
-      }
+        } else { targetEl.innerText = "❌ 翻訳できませんでした"; }
+      } catch (e) { targetEl.innerText = "❌ エラーが発生しました"; }
     };
 
     window.speakText = (elementId) => {
@@ -669,9 +655,7 @@
     function linkify(text) {
       if (!text) return "";
       let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      safeText = safeText.replace(/&gt;&gt;#([0-9\-]+)/g, (match, targetNum) => {
-        return `<span class="anchor-link">&gt;&gt;#${targetNum}</span>`;
-      });
+      safeText = safeText.replace(/&gt;&gt;#([0-9\-]+)/g, (match, targetNum) => `<span class="anchor-link">&gt;&gt;#${targetNum}</span>`);
       return safeText.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank">${url}</a>`);
     }
 
@@ -724,7 +708,6 @@
       if (savedListContainer) savedListContainer.innerHTML = '';
 
       const targetPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-      
       const isRoomFull = targetPosts.length >= 999;
       const warnMsg = document.getElementById('roomFullWarningMessage');
       const inputTxt = document.getElementById('inputText');
@@ -790,7 +773,7 @@
             <div>
               <span style="font-weight:bold; color:var(--primary-color);">#${post.indexNum}</span>
               <span class="post-author">👤 ${post.author}</span>
-              <span class="user-uid">ID:${post.authorUid}</span>
+              <span class="user-uid">ID:${post.authorUid || '-----'}</span>
             </div>
             <div>
               <button onclick="togglePin('${post.firebaseKey}')" style="font-size:10px; padding:2px 4px;">${post.isPinned ? '📌解除' : '📌固定'}</button>
@@ -889,7 +872,6 @@
       });
     }
 
-    // アプリ起動
     initApp();
   </script>
 </body>
