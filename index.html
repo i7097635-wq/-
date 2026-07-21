@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supabase掲示板アプリ（完全デバッグ版・エラー完全回避）</title>
+  <title>Supabase掲示板アプリ（完全エラー回避版）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -154,10 +154,10 @@
 
   <script>
     // ==========================================
-    // 🌐 SUPABASE 設定
+    // 🌐 SUPABASE 設定（URLとAPIキーを組み込み済み）
     // ==========================================
     const SUPUAL = "https://czffquysuyfwwtimachk.supabase.co"; 
-    const SUPAKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZmZxdXlzdXlmd3d0aW1hY2hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDIzMzksImV4cCI6MjEwMDExODMzOX0.T9n6aMEimZrK7sUuGCq7CQgxWNkqrVQisW0oFu4djjg"; // ← あなたの正しいAnonキーを入れてね
+    const SUPAKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZmZxdXlzdXlmd3d0aW1hY2hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDIzMzksImV4cCI6MjEwMDExODMzOX0.T9n6aMEimZrK7sUuGCq7CQgxWNkqrVQisW0oFu4djjg";
     
     let supabaseClient = null;
     try {
@@ -261,12 +261,12 @@
       }
     }
 
+    // 🔴 エラーの原因になる存在しないカラムを送信しないように対策した保存関数
     async function savePostToBackend(post) {
       allPostsData.push(post);
       refreshList();
       if (supabaseClient) {
-        // authorUid を除外して送信（スキーマエラーを完全に回避）
-        const { authorUid, ...postToSend } = post;
+        const { authorUid, firebaseKey, ...postToSend } = post;
         const { error } = await supabaseClient.from('posts').upsert(postToSend);
         if (error) {
           alert("⚠️ サーバーへの保存に失敗しました: " + error.message);
@@ -280,7 +280,7 @@
     async function updatePostInBackend(post) {
       refreshList();
       if (supabaseClient) {
-        const { authorUid, ...postToSend } = post;
+        const { authorUid, firebaseKey, ...postToSend } = post;
         const { error } = await supabaseClient.from('posts').upsert(postToSend);
         if (error) fetchRemoteData();
       } else {
@@ -289,10 +289,11 @@
     }
 
     async function removePostFromBackend(fbKey) {
+      const target = allPostsData.find(p => p.firebaseKey === fbKey);
       allPostsData = allPostsData.filter(p => p.firebaseKey !== fbKey);
       refreshList();
-      if (supabaseClient) {
-        const { error } = await supabaseClient.from('posts').delete().eq('firebaseKey', fbKey);
+      if (supabaseClient && target) {
+        const { error } = await supabaseClient.from('posts').delete().eq('id', target.id);
         if (error) fetchRemoteData();
       } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
@@ -852,7 +853,7 @@
                 <div style="word-break:break-all;" id="${repTextId}">${linkify(rep.text)}</div>
                 <div style="margin-top:4px; display:flex; gap:4px;">
                   <button onclick="speakText('${repTextId}')" style="font-size:10px; padding:1px 4px;">🗣️</button>
-                  <button onclick="translateText('${repTextId}')" style="font-size:10px; padding:1px 4px;">🌐</button>
+                  <button onclick="translateTest('${repTextId}')" style="font-size:10px; padding:1px 4px;">🌐</button>
                 </div>
               </div>
             `;
