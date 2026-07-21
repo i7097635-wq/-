@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supabase掲示板アプリ（完全デバッグ版）</title>
+  <title>Supabase掲示板アプリ（完全デバッグ版・エラー完全回避）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -154,14 +154,14 @@
 
   <script>
     // ==========================================
-    // 🌐 SUPABASE 設定（ここに自分のURLと鍵を入れる）
+    // 🌐 SUPABASE 設定
     // ==========================================
     const SUPUAL = "https://czffquysuyfwwtimachk.supabase.co"; 
-    const SUPAKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZmZxdXlzdXlmd3d0aW1hY2hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDIzMzksImV4cCI6MjEwMDExODMzOX0.T9n6aMEimZrK7sUuGCq7CQgxWNkqrVQisW0oFu4djjg";
+    const SUPAKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZmZxdXlzdXlmd3d0aW1hY2hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDEyNDQ4Mzh9.dummy_key_placeholder"; // ← あなたの正しいAnonキーを入れてね
     
     let supabaseClient = null;
     try {
-      if (typeof supabase !== 'undefined' && SUPUAL !== "https://YOUR_SUPABASE_PROJECT.supabase.co") {
+      if (typeof supabase !== 'undefined' && SUPUAL.includes("supabase.co")) {
         supabaseClient = supabase.createClient(SUPUAL, SUPAKEY);
       }
     } catch(e) { console.error("Supabase initialize error:", e); }
@@ -265,7 +265,9 @@
       allPostsData.push(post);
       refreshList();
       if (supabaseClient) {
-        const { error } = await supabaseClient.from('posts').upsert(post);
+        // authorUid を除外して送信（スキーマエラーを完全に回避）
+        const { authorUid, ...postToSend } = post;
+        const { error } = await supabaseClient.from('posts').upsert(postToSend);
         if (error) {
           alert("⚠️ サーバーへの保存に失敗しました: " + error.message);
           fetchRemoteData();
@@ -278,7 +280,8 @@
     async function updatePostInBackend(post) {
       refreshList();
       if (supabaseClient) {
-        const { error } = await supabaseClient.from('posts').upsert(post);
+        const { authorUid, ...postToSend } = post;
+        const { error } = await supabaseClient.from('posts').upsert(postToSend);
         if (error) fetchRemoteData();
       } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
