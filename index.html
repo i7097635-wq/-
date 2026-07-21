@@ -547,13 +547,33 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
     const pin = pinInput.value.trim();
 
     if (!roomName) return;
-    if (hasNgWord(roomName)) {
-        alert("⚠️ 部屋名に不適切な言葉が含まれているため、作成できません。");
+    
+    // NGワードチェック
+    if (hasNgWord(roomName)) { alert("⚠️ 部屋名に不適切な言葉が含まれています。"); return; }
+    
+    const { error } = await supabase.from('rooms').insert([{ room_name: roomName, password: pin || null }]);
+    if (error) { alert("作成失敗: " + error.message); } else {
+        nameInput.value = ""; pinInput.value = "";
+        currentActiveRoom = roomName;
+        await loadRoomsList();
+        refreshList();
+    }
+};
+
+window.addMemo = async () => {
+    const el = document.getElementById('inputText');
+    const name = document.getElementById('usernameInput').value.trim() || '名無し';
+    const text = el.value.trim();
+    if (!text) return;
+    
+    // システム予約チェック
+    if (isSystemMainRoom(roomName)) {
+        alert("⚠️ 「メインルーム(数字)」という名前の部屋はシステム予約されています。");
         return;
     }
-    
-    // Supabaseの rooms テーブルに新しい部屋を追加
-    const { error } = await supabase.from('rooms').insert([
+
+    // Supabaseに登録
+    const { data, error } = await supabase.from('rooms').insert([
         { room_name: roomName, password: pin || null }
     ]);
 
@@ -563,8 +583,8 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
         nameInput.value = "";
         pinInput.value = "";
         currentActiveRoom = roomName;
-        // 部屋作成が終わったら、自動的に部屋一覧を読み直し、画面を更新
-        await loadRoomsList();
+        // 部屋リストを更新し、新しい部屋を表示
+        await loadRoomsList(); 
         refreshList();
     }
 };
@@ -580,7 +600,7 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
     roomsInfoData[roomName] = { pin: pin || null };
     nameInput.value = ""; pinInput.value = ""; 
     currentActiveRoom = roomName;
-    saveToLocalStorage(); loadRoomsList(); refreshList();
+    loadRoomsList(); refreshList();
   };
 
   window.editCurrentRoomPin = () => {
@@ -689,30 +709,24 @@ const supabase = supabase.createClient('https://czffquysuyfwwtimachk.supabase.co
 
     if(!text.trim() && !selectedImageData && !pollData) return;
 
-    const updatedRoomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-    const nextIndex = updatedRoomPosts.length > 0 ? Math.max(...updatedRoomPosts.map(p => p.indexNum || 0)) + 1 : 1;
-
     const newPost = {
-    room: currentActiveRoom,
-    indexNum: 1, // ※後述の重要点参照
-    author: name,
-    authorUid: generateUserUID(name),
-    time: getNowString(),
-    timestamp: new Date().getTime(),
-    text: text,
-    reactions: { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 },
-    replies: []
-  };
+        room: currentActiveRoom,
+        author: name,
+        authorUid: generateUserUID(name),
+        time: getNowString(),
+        timestamp: new Date().getTime(),
+        text: text,
+        reactions: { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 },
+        replies: []
+    };
 
-const { error } = await supabase.from('posts').insert([newPost]);
-  
-  if (error) {
-    console.error("投稿エラー:", error);
-    alert("投稿に失敗しました。");
-  } else {
-    el.value = ''; // 成功したら入力欄を空にする
-    // ここで saveToLocalStorage() は絶対に呼ばないでください！
-  }
+    const { error } = await supabase.from('posts').insert([newPost]);
+    if (error) {
+        alert("投稿に失敗しました: " + error.message);
+    } else {
+        el.value = '';
+        refreshList(); // データ送信後、即座にリストを更新
+    }
 };    await supabase.from('posts').insert(newPost);
     
     checkAndCleanSpam(newPost);
@@ -912,11 +926,18 @@ await supabase.from('posts')
 
   async function loadRoomsList() {
     const select = document.getElementById('currentRoomSelect');
+    const container = document.getElementById('roomListContainer');
 
-const { data: dbRooms } = await supabase.from('rooms').select('*');
+const { data: dbRooms, error } = await supabase.from('rooms').select('*');
+    if (error) {
+        console.error("部屋リストの取得に失敗しました", error);
+        return;
+    }
 const roomsMap = {};
     if (dbRooms) {
-      dbRooms.forEach(r => roomsMap[r.room_name] = { pin: r.password });
+        dbRooms.forEach(r => {
+            roomsMap[r.room_name] = { pin: r.password }; // DBの 'password' 列を暗証番号として扱う
+        });
     }
     select.innerHTML = '<option value="メインルーム">メインルーム</option>';
     
@@ -932,20 +953,16 @@ const sortedRooms = Array.from(allRoomNamesSet).sort((a, b) => {
     allPostsData.forEach(p => { if(p.room) allRoomNamesSet.add(p.room); });
 
     const sortedRooms = Array.from(allRoomNamesSet).sort((a, b) => {
-      if (a === "メインルーム") return -1;
-      if (b === "メインルーム") return 1;
-      const aM = a.match(/^メインルーム(\d+)$/);
-      const bM = b.match(/^メインルーム(\d+)$/);
-      if (aM && bM) return parseInt(aM[1]) - parseInt(bM[1]);
-      if (aM) return -1;
-      if (bM) return 1;
-      return a.localeCompare(b);
+        if (a === "メインルーム") return -1;
+        if (b === "メインルーム") return 1;
+        return a.localeCompare(b);
     });
 
     select.innerHTML = "";
+    container.innerHTML = "";
+
     sortedRooms.forEach(rName => {
-      const opt = document.createElement('option');
-      const isLocked = rName !== "メインルーム" && roomsMap[rName]?.pin;
+        const isLocked = rName !== "メインルーム" && roomsMap[rName]?.pin;
       opt.value = rName;
       opt.innerText = rName + (isLocked ? " 🔒" : "");
       select.appendChild(opt);
@@ -957,16 +974,18 @@ const sortedRooms = Array.from(allRoomNamesSet).sort((a, b) => {
     sortedRooms.forEach(rName => {
       const isLocked = rName !== "メインルーム" && roomsMap[rName]?.pin;
       const div = document.createElement('div');
-      div.className = 'room-item' + (currentActiveRoom === rName ? ' active' : '');
-      div.innerHTML = `<strong>${isLocked ? '🔒 ' : ''}${rName}</strong>`;
-      div.onclick = () => { select.value = rName; window.switchRoom(); };
-      container.appendChild(div);
+        div.className = 'room-item' + (currentActiveRoom === rName ? ' active' : '');
+        div.innerHTML = `<strong>${isLocked ? '🔒 ' : ''}${rName}</strong>`;
+        div.onclick = () => { select.value = rName; window.switchRoom(); };
+        container.appendChild(div);
     });
 
-const isSpecialRoom = (currentActiveRoom === "351125" || isSystemMainRoom(currentActiveRoom));
+select.value = currentActiveRoom;
+
+const isSpecialRoom = isSystemMainRoom(currentActiveRoom);
     document.getElementById('roomPinBtn').style.display = isSpecialRoom ? "none" : "inline-block";
     document.getElementById('roomDelBtn').style.display = isSpecialRoom ? "none" : "inline-block";
-  }
+}
       
       let badge = `(${roomPostsCount})`;
       if (roomPostsCount >= 999) {
@@ -1003,19 +1022,26 @@ const isSpecialRoom = (currentActiveRoom === "351125" || isSystemMainRoom(curren
   }
 
 async function refreshList() {
-    // 1. DBからデータを取得
-    const { data: targetPosts } = await supabase.from('posts').select('*').eq('room', currentActiveRoom);
+    // 1. 【ここが一番重要】Supabaseから「今見ている部屋（currentActiveRoom）」の投稿だけをすべて取得する
+    const { data: targetPosts, error: postError } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('room', currentActiveRoom); // ← 「現在の部屋」に一致するものだけに絞る
+
+    if (postError) {
+        console.error("投稿の取得に失敗しました", postError);
+        return;
+    }
+
     const { data: hiddenData } = await supabase.from('hidden_requests').select('post_key');
     const hiddenKeys = hiddenData ? hiddenData.map(h => h.post_key) : [];
 
-    // 2. 画面の準備（リセット）
+    // 3. 画面のリストを一旦空にする
     const list = document.getElementById('memoList');
     list.innerHTML = '';
     const emergencyList = document.getElementById('emergencyList');
     emergencyList.innerHTML = '';
-    
-    // 3. 投稿一覧の描画
-    // targetPosts を使って、これまで通りのHTML生成ロジックを回します
+
     if (!targetPosts) return;
 
     const pinnedPosts = targetPosts.filter(p => p.isPinned);
@@ -1023,15 +1049,38 @@ async function refreshList() {
     const finalDisplayPosts = [...pinnedPosts, ...normalPosts.slice().reverse()];
 
     finalDisplayPosts.forEach(post => {
-        // ここにあなたの持っている「div.innerHTML = `...`」の長いHTML生成ロジックを入れてください
-        // (今のコードの `finalDisplayPosts.forEach` の中身をそのまま貼り付ければOKです)
+        const div = document.createElement('div');
+        div.className = 'post' + (post.isPinned ? ' pinned' : '');
+        div.id = `target_num_${post.indexNum}`;
+
+div.innerHTML = `
+            <div class="post-header">
+              <span>#${post.indexNum} 👤 ${post.author}</span>
+              <span>${post.time}</span>
+            </div>
+            <div class="post-text">${linkify(post.text)}</div>
+        `;
+
+        list.appendChild(div);
     });
     
     // 4. 依頼リストの描画
     targetPosts.forEach(post => {
         if (post.text && post.text.includes('@') && !hiddenKeys.includes(post.firebaseKey)) {
-             // 依頼リスト生成ロジック
+            const emItem = document.createElement('div'); 
+            emItem.className = 'emergency-item';
+            emItem.innerHTML = `
+              <div>⚠️ <b>内容:</b> ${linkify(post.text)}</div>
+              <button onclick="hideDeleteRequest('${post.firebaseKey}')">❌ 一覧から消去</button>
+            `;
+            emergencyList.appendChild(emItem);
         }
+    });
+
+    if (emergencyList.innerHTML === '') {
+        emergencyList.innerHTML = '<div style="color:#a0aec0; text-align:center; font-size:12px;">依頼はありません</div>';
+    }
+}
     });
 }
     if (mySavedPostsData.length === 0) {
@@ -1089,24 +1138,23 @@ async function refreshList() {
     const normalPosts = targetPosts.filter(p => !p.isPinned);
     const finalDisplayPosts = [...pinnedPosts, ...normalPosts.slice().reverse()];
 
-    finalDisplayPosts.forEach(post => {
-      const div = document.createElement('div');
-      div.className = 'post' + (post.isPinned ? ' pinned' : '') + (post.isSpoiler ? ' spoiler-border' : '');
-      div.id = `target_num_${post.indexNum}`;
+    posts.forEach(post => {
+        const div = document.createElement('div');
+        div.className = 'post';
+        div.innerHTML = `
+            <div class="post-header">👤 ${post.author} - ${post.time}</div>
+            <div class="post-text">${linkify(post.text)}</div>
+            <button onclick="deleteMemo('${post.id}')">削除</button>
+        `;
+list.appendChild(div);
+    });
+}
 
-      div.innerHTML = `
-        <div class="post-control-bar">
-          <button class="pin-btn" onclick="togglePin('${post.firebaseKey}')">${post.isPinned ? '📌 固定解除' : '📌 ピン留め'}</button>
-          <button class="delete-btn" onclick="deleteMemo('${post.firebaseKey}')">❌ 削除</button>
-        </div>
-        <div class="post-header">
-          <span class="post-author">
-            <span class="post-index-num">#${post.indexNum}</span> 
-            👤 ${post.author}<span class="user-uid">ID:${post.authorUid}</span>
-          </span>
-          <span class="post-time">${post.time}</span>
-        </div>
-      `;
+window.deleteMemo = async (id) => {
+    if (!confirm('削除しますか？')) return;
+    await supabase.from('posts').delete().eq('id', id);
+    refreshList();
+};
 
       if (post.isSpoiler && !openedSpoilers.includes(post.id)) {
         div.innerHTML += `<button style="width:100%; padding:15px; background:#fefbeb; border:2px dashed #fef08a; border-radius:6px; color:#b45309; font-weight:bold; cursor:pointer;" onclick="revealSpoiler('${post.id}')">⚠️ ワンクッション投稿を表示する</button>`;
@@ -1226,14 +1274,12 @@ async function refreshList() {
   if (savedUrl) document.getElementById('panicUrlInput').value = savedUrl;
   if (localStorage.getItem('myBoardTheme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
-supabase.channel('public:posts')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, payload => {
-      console.log('データが更新されました！最新データを反映します');
-      refreshList(); 
-    })
-    .subscribe();
+supabase.channel('posts').on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+    refreshList();
+}).subscribe();
 
-  loadRoomsList(); refreshList();
+loadRoomsList();
+refreshList();
 </script>
 </body>
 </html>
