@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supabase掲示板アプリ</title>
-  <!-- Supabase JS Client -->
+  <title>Supabase掲示板アプリ（デバッグ・安定版）</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -71,6 +70,9 @@
     .replies-box { margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px; }
     .reply-item { font-size: 13px; background: rgba(0,0,0,0.02); padding: 8px; border-radius: 6px; margin-bottom: 6px; }
     .anchor-link { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
+    .connection-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold; }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-ng { background: #fee2e2; color: #991b1b; }
   </style>
 </head>
 <body>
@@ -78,7 +80,7 @@
   <!-- サイドバー -->
   <div class="sidebar">
     <div class="sidebar-header">
-      <span>💬 掲示板メニュー</span>
+      <span>💬 掲示板メニュー <span id="connBadge" class="connection-status status-ng">未接続</span></span>
       <button onclick="toggleDarkMode()" style="font-size:11px; padding:2px 6px;">🌓</button>
     </div>
     <div class="sidebar-tabs">
@@ -97,6 +99,7 @@
       <div id="savedPostsListContainer"></div>
     </div>
     <div class="sidebar-content" id="sidebarContent_emergency" style="display: none;">
+      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">管理者への部屋削除・修正依頼など（@を含む投稿）</div>
       <div id="emergencyList"></div>
     </div>
   </div>
@@ -163,75 +166,143 @@
     let selectedImageData = null;
     let openedSpoilers = [];
     let isPollCreating = false;
+    let isFetching = false; // 非同期競合ブロック用フラグ
 
     // 初期化 & リアルタイム接続
     async function initApp() {
       if (supabaseClient) {
+        const badge = document.getElementById('connBadge');
+        badge.innerText = "接続中...";
+        
         await fetchRemoteData();
+        
+        // リアルタイムリスナーの登録（posts と rooms の変更を監視）
         supabaseClient
-          .channel('public:board_data')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => fetchRemoteData())
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => fetchRemoteData())
-          .subscribe();
+          .channel('public:board_all_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+            fetchRemoteData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
+            fetchRemoteData();
+          })
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              badge.innerText = "Supabase連動中";
+              badge.className = "connection-status status-ok";
+            } else {
+              badge.innerText = "同期エラー";
+              badge.className = "connection-status status-ng";
+            }
+          });
       } else {
+        const badge = document.getElementById('connBadge');
+        badge.innerText = "ローカルモード";
+        badge.className = "connection-status status-ng";
         allPostsData = JSON.parse(localStorage.getItem('allPostsData11') || '[]');
         const savedRooms = localStorage.getItem('roomsInfoData11');
         if (savedRooms) roomsInfoData = JSON.parse(savedRooms);
+        loadRoomsList();
+        refreshList();
       }
-      loadRoomsList();
-      refreshList();
     }
 
     async function fetchRemoteData() {
-      if (!supabaseClient) return;
-      const { data: posts } = await supabaseClient.from('posts').select('*');
-      if (posts) allPostsData = posts;
+      if (!supabaseClient || isFetching) return;
+      isFetching = true;
       
-      const { data: rooms } = await supabaseClient.from('rooms').select('*');
-      if (rooms) {
-        roomsInfoData = {};
-        rooms.forEach(r => { roomsInfoData[r.name] = { pin: r.pin }; });
+      try {
+        const { data: posts, error: pError } = await supabaseClient.from('posts').select('*');
+        if (!pError && posts) {
+          allPostsData = posts;
+        } else if (pError) {
+          console.error("Posts fetch error:", pError.message);
+        }
+        
+        const { data: rooms, error: rError } = await supabaseClient.from('rooms').select('*');
+        if (!rError && rooms) {
+          let newRoomsInfo = {};
+          rooms.forEach(r => { newRoomsInfo[r.name] = { pin: r.pin }; });
+          if (!newRoomsInfo["メインルーム"]) newRoomsInfo["メインルーム"] = { pin: null };
+          roomsInfoData = newRoomsInfo;
+        } else if (rError) {
+          console.error("Rooms fetch error:", rError.message);
+        }
+        
+        loadRoomsList();
+        refreshList();
+      } catch (err) {
+        console.error("fetchRemoteData exception:", err);
+      } finally {
+        isFetching = false;
       }
-      loadRoomsList();
-      refreshList();
     }
 
-    async function saveToBackend() {
-      if (!supabaseClient) {
+    async function savePostToBackend(post) {
+      allPostsData.push(post);
+      refreshList(); // 楽観的UI更新
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('posts').upsert(post);
+        if (error) {
+          alert("⚠️ サーバーへの保存に失敗しました: " + error.message);
+          fetchRemoteData(); // 失敗時は再取得して整合性を戻す
+        }
+      } else {
         localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
-        localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
-        localStorage.setItem('mySavedPostsData11', JSON.stringify(mySavedPostsData));
-        localStorage.setItem('hiddenRequestsData11', JSON.stringify(hiddenRequestsData));
-        return;
       }
-      for (const p of allPostsData) {
-        await supabaseClient.from('posts').upsert(p);
-      }
-      for (const [rName, rVal] of Object.entries(roomsInfoData)) {
-        await supabaseClient.from('rooms').upsert({ name: rName, pin: rVal.pin });
+    }
+
+    async function updatePostInBackend(post) {
+      refreshList(); // 楽観的UI更新
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('posts').upsert(post);
+        if (error) {
+          console.error("Update error:", error.message);
+          fetchRemoteData();
+        }
+      } else {
+        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
       }
     }
 
     async function removePostFromBackend(fbKey) {
       allPostsData = allPostsData.filter(p => p.firebaseKey !== fbKey);
+      refreshList(); // 楽観的UI更新
       if (supabaseClient) {
-        await supabaseClient.from('posts').delete().eq('firebaseKey', fbKey);
+        const { error } = await supabaseClient.from('posts').delete().eq('firebaseKey', fbKey);
+        if (error) {
+          alert("⚠️ 削除に失敗しました: " + error.message);
+          fetchRemoteData();
+        }
+      } else {
+        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
       }
-      saveToBackend();
-      refreshList();
+    }
+
+    async function saveRoomToBackend(rName, pinVal) {
+      roomsInfoData[rName] = { pin: pinVal };
+      loadRoomsList();
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('rooms').upsert({ name: rName, pin: pinVal });
+        if (error) alert("⚠️ ルーム保存エラー: " + error.message);
+      } else {
+        localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
+      }
     }
 
     async function removeRoomFromBackend(roomName) {
       delete roomsInfoData[roomName];
       allPostsData = allPostsData.filter(p => p.room !== roomName);
+      currentActiveRoom = "メインルーム";
+      loadRoomsList();
+      refreshList();
+      
       if (supabaseClient) {
         await supabaseClient.from('rooms').delete().eq('name', roomName);
         await supabaseClient.from('posts').delete().eq('room', roomName);
+      } else {
+        localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
+        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
       }
-      currentActiveRoom = "メインルーム";
-      saveToBackend();
-      loadRoomsList();
-      refreshList();
     }
 
     function switchSidebarTab(tabName) {
@@ -266,10 +337,12 @@
 
     window.switchRoom = () => {
       const select = document.getElementById('currentRoomSelect');
-      currentActiveRoom = select.value;
-      document.getElementById('currentRoomTitle').innerText = currentActiveRoom;
-      loadRoomsList();
-      refreshList();
+      if (select) {
+        currentActiveRoom = select.value;
+        document.getElementById('currentRoomTitle').innerText = currentActiveRoom;
+        loadRoomsList();
+        refreshList();
+      }
     };
 
     window.createNewRoom = () => {
@@ -280,10 +353,9 @@
         alert("⚠️ その部屋はすでに存在します。");
         return;
       }
-      roomsInfoData[rName] = { pin: null };
+      saveRoomToBackend(rName, null);
       currentActiveRoom = rName;
       input.value = "";
-      saveToBackend();
       loadRoomsList();
       refreshList();
     };
@@ -292,16 +364,15 @@
       if (isSystemMainRoom(currentActiveRoom)) return;
       const currentPin = roomsInfoData[currentActiveRoom]?.pin;
       if (currentPin) {
-        roomsInfoData[currentActiveRoom].pin = null;
+        saveRoomToBackend(currentActiveRoom, null);
         alert("🔓 部屋の鍵を解除しました。");
       } else {
         const pin = prompt("🔒 部屋の暗証番号（PIN）を入力してください:");
         if (pin) {
-          roomsInfoData[currentActiveRoom] = { pin: pin };
+          saveRoomToBackend(currentActiveRoom, pin);
           alert("🔒 部屋に鍵を設定しました。");
         }
       }
-      saveToBackend();
       loadRoomsList();
     };
 
@@ -321,13 +392,30 @@
       return "メインルーム2";
     }
 
+    // 画像圧縮（容量オーバー対策）
     window.handleImageSelect = (event) => {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
-        selectedImageData = e.target.result;
-        document.getElementById('selectedImageName').innerText = `(画像選択済)`;
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 800;
+          if (width > height && width > maxDim) {
+            height *= maxDim / width; width = maxDim;
+          } else if (height > maxDim) {
+            width *= maxDim / height; height = maxDim;
+          }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          selectedImageData = canvas.toDataURL('image/jpeg', 0.7);
+          document.getElementById('selectedImageName').innerText = `(画像圧縮・選択済)`;
+        };
+        img.src = e.target.result;
       };
       reader.readAsDataURL(file);
     };
@@ -350,11 +438,10 @@
         if (isSystemMainRoom(currentActiveRoom)) {
           const nextRoomName = getNextMainRoomName(currentActiveRoom);
           if (!roomsInfoData[nextRoomName]) {
-            roomsInfoData[nextRoomName] = { pin: null };
+            saveRoomToBackend(nextRoomName, null);
           }
           alert(`📌 999投稿に達しました。新しい部屋「${nextRoomName}」へ自動移行します！`);
           currentActiveRoom = nextRoomName;
-          saveToBackend();
           loadRoomsList();
           refreshList();
         } else {
@@ -391,7 +478,7 @@
 
       const newPost = {
         id: "p_" + Date.now(),
-        firebaseKey: "key_" + Date.now(),
+        firebaseKey: "key_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
         room: currentActiveRoom,
         indexNum: nextIndex,
         author: name,
@@ -407,8 +494,7 @@
         replies: []
       };
 
-      allPostsData.push(newPost);
-      saveToBackend();
+      savePostToBackend(newPost);
 
       el.value = '';
       window.cancelImage();
@@ -418,7 +504,6 @@
       document.getElementById('pollQuestionInput').value = '';
       document.getElementById('pollOpt1Input').value = '';
       document.getElementById('pollOpt2Input').value = '';
-      refreshList();
     };
 
     window.votePoll = (fbKey, optIdx) => {
@@ -433,8 +518,7 @@
       }
       post.poll.voters.push(myUid);
       post.poll.options[optIdx].votes = (post.poll.options[optIdx].votes || 0) + 1;
-      saveToBackend();
-      refreshList();
+      updatePostInBackend(post);
     };
 
     window.savePostToMyFolder = (fbKey) => {
@@ -445,7 +529,7 @@
         return;
       }
       mySavedPostsData.push(JSON.parse(JSON.stringify(post)));
-      saveToBackend();
+      localStorage.setItem('mySavedPostsData11', JSON.stringify(mySavedPostsData));
       refreshList();
       switchSidebarTab('saved');
       alert("💾 保存しました！");
@@ -453,14 +537,14 @@
 
     window.removeSavedPost = (fbKey) => {
       mySavedPostsData = mySavedPostsData.filter(p => p.firebaseKey !== fbKey);
-      saveToBackend();
+      localStorage.setItem('mySavedPostsData11', JSON.stringify(mySavedPostsData));
       refreshList();
     };
 
     window.hideDeleteRequest = (fbKey) => {
       if (!confirm("非表示にしますか？")) return;
       hiddenRequestsData.push(fbKey);
-      saveToBackend();
+      localStorage.setItem('hiddenRequestsData11', JSON.stringify(hiddenRequestsData));
       refreshList();
     };
 
@@ -468,8 +552,7 @@
       const post = allPostsData.find(p => p.firebaseKey === fbKey);
       if (post) {
         post.isPinned = !post.isPinned;
-        saveToBackend();
-        refreshList();
+        updatePostInBackend(post);
       }
     };
 
@@ -486,8 +569,7 @@
       if (post) {
         if (!post.reactions) post.reactions = { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 };
         post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
-        saveToBackend();
-        refreshList();
+        updatePostInBackend(post);
       }
     };
 
@@ -501,6 +583,7 @@
 
     window.addReply = (fbKey, postId) => {
       const input = document.getElementById(`repInput_${postId}`);
+      if (!input) return;
       const text = input.value.trim();
       if (!text) return;
       const myName = document.getElementById('usernameInput').value.trim() || '名無し';
@@ -516,9 +599,8 @@
           text: text,
           time: getNowString()
         });
-        saveToBackend();
+        updatePostInBackend(post);
         input.value = "";
-        refreshList();
       }
     };
 
@@ -527,8 +609,7 @@
       const post = allPostsData.find(p => p.firebaseKey === fbKey);
       if (post && post.replies) {
         post.replies.splice(rIdx, 1);
-        saveToBackend();
-        refreshList();
+        updatePostInBackend(post);
       }
     };
 
@@ -635,57 +716,68 @@
 
     function refreshList() {
       const list = document.getElementById('memoList');
+      if (!list) return;
       list.innerHTML = '';
       const emergencyList = document.getElementById('emergencyList');
-      emergencyList.innerHTML = '';
       const savedListContainer = document.getElementById('savedPostsListContainer');
-      savedListContainer.innerHTML = '';
+      if (emergencyList) emergencyList.innerHTML = '';
+      if (savedListContainer) savedListContainer.innerHTML = '';
 
       const targetPosts = allPostsData.filter(p => p.room === currentActiveRoom);
       
       const isRoomFull = targetPosts.length >= 999;
-      if (isRoomFull) {
-        document.getElementById('roomFullWarningMessage').style.display = "block";
-        document.getElementById('inputText').disabled = true;
-        document.getElementById('addPostBtn').disabled = true;
-      } else {
-        document.getElementById('roomFullWarningMessage').style.display = "none";
-        document.getElementById('inputText').disabled = false;
-        document.getElementById('addPostBtn').disabled = false;
-      }
+      const warnMsg = document.getElementById('roomFullWarningMessage');
+      const inputTxt = document.getElementById('inputText');
+      const addBtn = document.getElementById('addPostBtn');
 
-      if (mySavedPostsData.length === 0) {
-        savedListContainer.innerHTML = '<div style="color:#64748b; text-align:center; padding:10px; font-size:12px;">保存された投稿はありません</div>';
-      } else {
-        mySavedPostsData.slice().reverse().forEach(sp => {
-          const item = document.createElement('div');
-          item.className = 'post';
-          item.innerHTML = `
-            <div style="font-size:11px; color:#64748b; margin-bottom:4px; display:flex; justify-content:space-between;">
-              <span>🚪 部屋: <b>${sp.room}</b> (#${sp.indexNum})</span>
-              <span style="color:#ef4444; cursor:pointer;" onclick="removeSavedPost('${sp.firebaseKey}')">解除 ❌</span>
-            </div>
-            <div style="font-weight:bold; font-size:12px; margin-bottom:4px;">👤 ${sp.author}:</div>
-            <div style="font-size:13px; word-break:break-all;">${linkify(sp.text)}</div>
-          `;
-          savedListContainer.appendChild(item);
-        });
-      }
-
-      allPostsData.forEach(post => {
-        if (post.text && post.text.includes('@')) {
-          if (hiddenRequestsData.includes(post.firebaseKey)) return;
-          const emItem = document.createElement('div');
-          emItem.className = 'post';
-          emItem.innerHTML = `
-            <div style="font-size:12px; margin-bottom:6px;">⚠️ <b>部屋:</b> 「${post.room}」 (#${post.indexNum})</div>
-            <div style="font-size:13px; margin-bottom:8px; font-style:italic;">${linkify(post.text)}</div>
-            <button onclick="hideDeleteRequest('${post.firebaseKey}')" style="font-size:11px;">❌ 一覧から非表示</button>
-          `;
-          emergencyList.appendChild(emItem);
+      if (warnMsg && inputTxt && addBtn) {
+        if (isRoomFull) {
+          warnMsg.style.display = "block";
+          inputTxt.disabled = true;
+          addBtn.disabled = true;
+        } else {
+          warnMsg.style.display = "none";
+          inputTxt.disabled = false;
+          addBtn.disabled = false;
         }
-      });
-      if (emergencyList.innerHTML === '') emergencyList.innerHTML = '<div style="color:#64748b; text-align:center; font-size:12px;">依頼はありません</div>';
+      }
+
+      if (savedListContainer) {
+        if (mySavedPostsData.length === 0) {
+          savedListContainer.innerHTML = '<div style="color:#64748b; text-align:center; padding:10px; font-size:12px;">保存された投稿はありません</div>';
+        } else {
+          mySavedPostsData.slice().reverse().forEach(sp => {
+            const item = document.createElement('div');
+            item.className = 'post';
+            item.innerHTML = `
+              <div style="font-size:11px; color:#64748b; margin-bottom:4px; display:flex; justify-content:space-between;">
+                <span>🚪 部屋: <b>${sp.room}</b> (#${sp.indexNum})</span>
+                <span style="color:#ef4444; cursor:pointer;" onclick="removeSavedPost('${sp.firebaseKey}')">解除 ❌</span>
+              </div>
+              <div style="font-weight:bold; font-size:12px; margin-bottom:4px;">👤 ${sp.author}:</div>
+              <div style="font-size:13px; word-break:break-all;">${linkify(sp.text)}</div>
+            `;
+            savedListContainer.appendChild(item);
+          });
+        }
+      }
+
+      if (emergencyList) {
+        allPostsData.forEach(post => {
+          if (post.text && post.text.includes('@')) {
+            if (hiddenRequestsData.includes(post.firebaseKey)) return;
+            const emItem = document.createElement('div');
+            emItem.className = 'post';
+            emItem.innerHTML = `
+              <div style="font-size:12px; margin-bottom:6px;">⚠️ <b>部屋:</b> 「${post.room}」 (#${post.indexNum})</div>
+              <div style="font-size:13px; margin-bottom:8px; font-style:italic;">${linkify(post.text)}</div>
+              <button onclick="hideDeleteRequest('${post.firebaseKey}')" style="font-size:11px;">❌ 一覧から非表示</button>
+            `;
+            emergencyList.appendChild(emItem);
+          }
+        });
+        if (emergencyList.innerHTML === '') emergencyList.innerHTML = '<div style="color:#64748b; text-align:center; font-size:12px;">依頼はありません</div>';
+      }
 
       const pinned = targetPosts.filter(p => p.isPinned);
       const normal = targetPosts.filter(p => !p.isPinned);
@@ -723,7 +815,6 @@
             contentHtml += `<img class="attached-img" src="${post.image}">`;
           }
 
-          // 投票機能の描画
           if (post.poll && post.poll.options) {
             let totalVotes = post.poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
             let pollHtml = `<div class="poll-container"><div style="font-weight:bold; font-size:13px; margin-bottom:6px;">📊 ${linkify(post.poll.question)}</div>`;
