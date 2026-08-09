@@ -1,882 +1,160 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Supabase掲示板アプリ（完全エラー回避版）</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-color: #1e293b;
-      --border-color: #e2e8f0;
-      --primary-color: #3b82f6;
-      --primary-hover: #2563eb;
-      --sidebar-bg: #f1f5f9;
-    }
-    [data-theme="dark"] {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --text-color: #f1f5f9;
-      --border-color: #334155;
-      --primary-color: #3b82f6;
-      --primary-hover: #60a5fa;
-      --sidebar-bg: #1e293b;
-    }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      margin: 0; padding: 0;
-      display: flex; height: 100vh; overflow: hidden;
-    }
-    .sidebar {
-      width: 280px; background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color);
-      display: flex; flex-direction: column; height: 100%; box-sizing: border-box;
-    }
-    .sidebar-header { padding: 15px; font-weight: bold; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-    .sidebar-tabs { display: flex; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.02); }
-    .sidebar-tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 11px; cursor: pointer; border: none; background: none; color: var(--text-color); font-weight: bold; }
-    .sidebar-tab.active { border-bottom: 2px solid var(--primary-color); color: var(--primary-color); background: var(--card-bg); }
-    .sidebar-content { flex: 1; overflow-y: auto; padding: 10px; }
-    
-    .main-container { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-    .header-bar { padding: 10px 20px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-    .content-area { flex: 1; overflow-y: auto; padding: 20px; box-sizing: border-box; }
-    
-    .post { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .post.pinned { border-color: #f59e0b; background: rgba(245, 158, 11, 0.02); }
-    .post-header { display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 8px; }
-    .post-author { font-weight: bold; color: var(--text-color); }
-    .user-uid { font-size: 10px; background: rgba(0,0,0,0.05); padding: 1px 4px; border-radius: 4px; margin-left: 6px; }
-    .post-text { word-break: break-all; white-space: pre-wrap; line-height: 1.5; font-size: 14px; margin-bottom: 10px; }
-    
-    .room-item { padding: 8px 12px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-    .room-item:hover { background: rgba(0,0,0,0.05); }
-    .room-item.active { background: var(--primary-color); color: white; font-weight: bold; }
-    
-    .input-box-container { background: var(--card-bg); border-top: 1px solid var(--border-color); padding: 15px 20px; }
-    textarea, input[type="text"] { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-color); color: var(--text-color); font-family: inherit; font-size: 14px; margin-bottom: 8px; resize: vertical; }
-    button { cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-color); font-size: 13px; font-weight: bold; }
-    button.primary { background: var(--primary-color); color: white; border: none; }
-    button.primary:hover { background: var(--primary-hover); }
-
-    .attached-img { max-width: 100%; max-height: 300px; border-radius: 6px; margin-top: 8px; display: block; }
-    .poll-container { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.02); border: 1px solid var(--border-color); border-radius: 6px; }
-    .poll-option { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding: 6px 10px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; font-size: 13px; }
-    .poll-option:hover { border-color: var(--primary-color); }
-
-    .replies-box { margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 10px; }
-    .reply-item { font-size: 13px; background: rgba(0,0,0,0.02); padding: 8px; border-radius: 6px; margin-bottom: 6px; }
-    .anchor-link { color: var(--primary-color); cursor: pointer; text-decoration: underline; }
-    .connection-status { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold; }
-    .status-ok { background: #dcfce7; color: #166534; }
-    .status-ng { background: #fee2e2; color: #991b1b; }
-  </style>
+<meta charset="UTF-8">
+<title>正方形コラージュ </title>
+<style>
+    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+    .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
+    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; }
+    .grid { display: grid; gap: 0px; }
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
+    .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
+    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; }
+    .cell.dragging { cursor: grabbing; }
+    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .cell canvas { position: absolute; top: 0; left: 0; cursor: move; display: none; transform-origin: 0 0; }
+    #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; }
+</style>
 </head>
 <body>
 
-  <!-- サイドバー -->
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <span>💬 掲示板 <span id="connBadge" class="connection-status status-ng">未接続</span></span>
-      <button onclick="toggleDarkMode()" style="font-size:11px; padding:2px 6px;">🌓</button>
-    </div>
-    <div class="sidebar-tabs">
-      <button class="sidebar-tab active" onclick="switchSidebarTab('rooms')" id="tabBtn_rooms">部屋</button>
-      <button class="sidebar-tab" onclick="switchSidebarTab('saved')" id="tabBtn_saved">保存</button>
-      <button class="sidebar-tab" onclick="switchSidebarTab('emergency')" id="tabBtn_emergency">依頼</button>
-      <button class="sidebar-tab" onclick="switchSidebarTab('escapeSettings')" id="tabBtn_escapeSettings">🚨脱出</button>
-    </div>
-    <div class="sidebar-content" id="sidebarContent_rooms">
-      <div style="margin-bottom: 10px; display: flex; gap: 5px;">
-        <input type="text" id="newRoomInput" placeholder="新ルーム名..." style="margin:0; font-size:12px;">
-        <button class="primary" onclick="createNewRoom()" style="font-size:12px; white-space:nowrap;">作成</button>
-      </div>
-      <div id="roomListContainer"></div>
-    </div>
-    <div class="sidebar-content" id="sidebarContent_saved" style="display: none;">
-      <div id="savedPostsListContainer"></div>
-    </div>
-    <div class="sidebar-content" id="sidebarContent_emergency" style="display: none;">
-      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">管理者への部屋削除・修正依頼など（@を含む投稿）</div>
-      <div id="emergencyList"></div>
-    </div>
-    <!-- 緊急脱出設定タブ -->
-    <div class="sidebar-content" id="sidebarContent_escapeSettings" style="display: none;">
-      <div style="font-size:12px; font-weight:bold; margin-bottom:6px;">🚨 緊急脱出設定</div>
-      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">文字入力欄以外でEnterキーを押すと、設定したURLへ瞬時にジャンプします（未設定時はGoogle）。</div>
-      <input type="text" id="escapeUrlInput" placeholder="https://www.google.com" style="font-size:12px; margin-bottom:6px;">
-      <button class="primary" onclick="saveEscapeUrl()" style="font-size:12px; width:100%;">設定を保存</button>
-    </div>
-  </div>
+<h1>コラージュメーカー</h1>
+<div class="controls">
+    <button onclick="setLayout('3x3')">3x3</button>
+    <button onclick="setLayout('2x2')">2x2</button>
+    <button onclick="location.reload()">リセット</button>
+</div>
+<p>ドラッグで位置調整 | ホイールで拡大 </p>
 
-  <!-- メインエリア -->
-  <div class="main-container">
-    <div class="header-bar">
-      <div>
-        🚪 現在の部屋: <b id="currentRoomTitle">メインルーム</b>
-        <span id="roomControlButtons" style="margin-left: 10px;"></span>
-      </div>
-      <div style="display: flex; gap: 10px; align-items: center;">
-        <input type="text" id="usernameInput" placeholder="名前 (名無し)" style="margin:0; width:120px; font-size:12px;" onchange="saveUserSettings()">
-      </div>
-    </div>
+<div id="editor-container">
+    <div id="grid" class="grid layout-3x3"></div>
+</div>
+<button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
 
-    <div class="content-area" id="memoList"></div>
+<script>
+    let currentLayout = '3x3';
+    let cellsData = [];
+    const CELL_PX = 200; // プレビュー時の1マスサイズ
 
-    <!-- 投稿フォーム -->
-    <div class="input-box-container">
-      <div id="roomFullWarningMessage" style="color:#ef4444; font-size:12px; margin-bottom:5px; display:none;">⚠️ この部屋は999投稿に達したため親投稿は作成できません。下の各返信をご利用ください。</div>
-      <textarea id="inputText" rows="2" placeholder="新しい投稿を入力... (@で管理者への部屋削除依頼)"></textarea>
-      
-      <!-- 投票作成エリア -->
-      <div id="pollCreatorArea" style="margin-bottom: 8px; display: none; background: rgba(0,0,0,0.02); padding: 8px; border-radius: 6px; border: 1px dashed var(--border-color);">
-        <div style="font-size: 11px; font-weight: bold; margin-bottom: 4px;">📊 投票を作成（オプション）</div>
-        <input type="text" id="pollQuestionInput" placeholder="投票の質問 (例: どっちが良い？)" style="font-size: 12px; margin-bottom: 4px;">
-        <input type="text" id="pollOpt1Input" placeholder="選択肢 1" style="font-size: 12px; margin-bottom: 4px;">
-        <input type="text" id="pollOpt2Input" placeholder="選択肢 2" style="font-size: 12px; margin-bottom: 4px;">
-      </div>
+    function setLayout(type) {
+        currentLayout = type;
+        document.getElementById('grid').className = `grid layout-${type}`;
+        createCells();
+    }
 
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-          <input type="file" id="imageFileInput" accept="image/*" style="display:none;" onchange="handleImageSelect(event)">
-          <button onclick="document.getElementById('imageFileInput').click()" style="font-size:12px;">📷 画像</button>
-          <button onclick="togglePollCreator()" style="font-size:12px;">📊 投票</button>
-          <span id="selectedImageName" style="font-size:11px; color:#64748b;"></span>
-          <label style="font-size:12px; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="isSpoilerCheck"> ワンクッション</label>
-        </div>
-        <button class="primary" id="addPostBtn" onclick="addMemo()">投稿する</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // ==========================================
-    // 🌐 SUPABASE 設定（URLとAPIキーを組み込み済み）
-    // ==========================================
-    const SUPUAL = "https://czffquysuyfwwtimachk.supabase.co"; 
-    const SUPAKEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN6ZmZxdXlzdXlmd3d0aW1hY2hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NDIzMzksImV4cCI6MjEwMDExODMzOX0.T9n6aMEimZrK7sUuGCq7CQgxWNkqrVQisW0oFu4djjg";
-    
-    let supabaseClient = null;
-    try {
-      if (typeof supabase !== 'undefined' && SUPUAL.includes("supabase.co")) {
-        supabaseClient = supabase.createClient(SUPUAL, SUPAKEY);
-      }
-    } catch(e) { console.error("Supabase initialize error:", e); }
-
-    let allPostsData = [];
-    let roomsInfoData = { "メインルーム": { pin: null } };
-    let mySavedPostsData = JSON.parse(localStorage.getItem('mySavedPostsData11') || '[]');
-    let hiddenRequestsData = JSON.parse(localStorage.getItem('hiddenRequestsData11') || '[]');
-    let currentActiveRoom = "メインルーム";
-    let selectedImageData = null;
-    let openedSpoilers = [];
-    let isPollCreating = false;
-    let isFetching = false;
-
-    // 🚨 緊急脱出システムのキーボードリスナー
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        const activeEl = document.activeElement;
-        const isInputFocused = activeEl && (activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'INPUT');
-        if (!isInputFocused) {
-          e.preventDefault();
-          const customUrl = localStorage.getItem('myEmergencyEscapeUrl11') || 'https://www.google.com';
-          window.location.replace(customUrl);
+    function createCells() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        const count = currentLayout === '3x3' ? 9 : 4;
+        cellsData = [];
+        for(let i=0; i<count; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.innerHTML = '<div class="placeholder">+</div>';
+            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null };
+            setupCell(cell, i);
+            grid.appendChild(cell);
         }
-      }
-    });
-
-    function saveEscapeUrl() {
-      const url = document.getElementById('escapeUrlInput').value.trim();
-      if (url) {
-        localStorage.setItem('myEmergencyEscapeUrl11', url);
-        alert("🚨 緊急脱出URLを保存しました！");
-      } else {
-        localStorage.removeItem('myEmergencyEscapeUrl11');
-        alert("🚨 緊急脱出URLをクリアしました（デフォルトのGoogleに戻ります）");
-      }
     }
 
-    const savedEscapeUrl = localStorage.getItem('myEmergencyEscapeUrl11');
-    if (savedEscapeUrl) {
-      document.getElementById('escapeUrlInput').value = savedEscapeUrl;
-    }
-
-    // 初期化 & リアルタイム接続
-    async function initApp() {
-      if (supabaseClient) {
-        const badge = document.getElementById('connBadge');
-        badge.innerText = "接続中...";
+    function setupCell(cell, i) {
+        cell.addEventListener('click', (e) => {
+            if(cellsData[i].img) return;
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = 'image/*';
+            input.onchange = (e) => {
+                if(e.target.files[0]) loadImage(e.target.files[0], i, cell);
+            };
+            input.click();
+        });
         
-        await fetchRemoteData();
+        let isDrag = false;
+        cell.addEventListener('mousedown', (e) => { isDrag = true; cell.classList.add('dragging'); });
+        window.addEventListener('mousemove', (e) => {
+            if(!isDrag || !cellsData[i].img) return;
+            const d = cellsData[i];
+            d.x += e.movementX; d.y += e.movementY;
+            applyConstraint(d, CELL_PX);
+            draw(i);
+        });
+        window.addEventListener('mouseup', () => { isDrag = false; cell.classList.remove('dragging'); });
         
-        supabaseClient
-          .channel('public:board_all_changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => { fetchRemoteData(); })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => { fetchRemoteData(); })
-          .subscribe((status) => {
-            if (status === 'SUBSCRIBED') {
-              badge.innerText = "Supabase連動中";
-              badge.className = "connection-status status-ok";
-            } else {
-              badge.innerText = "同期エラー";
-              badge.className = "connection-status status-ng";
-            }
-          });
-      } else {
-        const badge = document.getElementById('connBadge');
-        badge.innerText = "ローカルモード";
-        badge.className = "connection-status status-ng";
-        allPostsData = JSON.parse(localStorage.getItem('allPostsData11') || '[]');
-        const savedRooms = localStorage.getItem('roomsInfoData11');
-        if (savedRooms) roomsInfoData = JSON.parse(savedRooms);
-        loadRoomsList();
-        refreshList();
-      }
+        cell.addEventListener('wheel', (e) => {
+            if(!cellsData[i].img) return;
+            e.preventDefault();
+            const d = cellsData[i];
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            d.scale *= factor;
+            applyConstraint(d, CELL_PX);
+            draw(i);
+        }, {passive:false});
     }
 
-    async function fetchRemoteData() {
-      if (!supabaseClient || isFetching) return;
-      isFetching = true;
-      try {
-        const { data: posts, error: pError } = await supabaseClient.from('posts').select('*');
-        if (!pError && posts) allPostsData = posts;
-        
-        const { data: rooms, error: rError } = await supabaseClient.from('rooms').select('*');
-        if (!rError && rooms) {
-          let newRoomsInfo = {};
-          rooms.forEach(r => { newRoomsInfo[r.name] = { pin: r.pin }; });
-          if (!newRoomsInfo["メインルーム"]) newRoomsInfo["メインルーム"] = { pin: null };
-          roomsInfoData = newRoomsInfo;
-        }
-        loadRoomsList();
-        refreshList();
-      } catch (err) {
-        console.error("fetchRemoteData exception:", err);
-      } finally {
-        isFetching = false;
-      }
-    }
-
-    // 🔴 エラーの原因になる存在しないカラムを送信しないように対策した保存関数
-    async function savePostToBackend(post) {
-      allPostsData.push(post);
-      refreshList();
-      if (supabaseClient) {
-        const { authorUid, firebaseKey, ...postToSend } = post;
-        const { error } = await supabaseClient.from('posts').upsert(postToSend);
-        if (error) {
-          alert("⚠️ サーバーへの保存に失敗しました: " + error.message);
-          fetchRemoteData();
-        }
-      } else {
-        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
-      }
-    }
-
-    async function updatePostInBackend(post) {
-      refreshList();
-      if (supabaseClient) {
-        const { authorUid, firebaseKey, ...postToSend } = post;
-        const { error } = await supabaseClient.from('posts').upsert(postToSend);
-        if (error) fetchRemoteData();
-      } else {
-        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
-      }
-    }
-
-    async function removePostFromBackend(fbKey) {
-      const target = allPostsData.find(p => p.firebaseKey === fbKey);
-      allPostsData = allPostsData.filter(p => p.firebaseKey !== fbKey);
-      refreshList();
-      if (supabaseClient && target) {
-        const { error } = await supabaseClient.from('posts').delete().eq('id', target.id);
-        if (error) fetchRemoteData();
-      } else {
-        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
-      }
-    }
-
-    async function saveRoomToBackend(rName, pinVal) {
-      roomsInfoData[rName] = { pin: pinVal };
-      loadRoomsList();
-      if (supabaseClient) {
-        await supabaseClient.from('rooms').upsert({ name: rName, pin: pinVal });
-      } else {
-        localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
-      }
-    }
-
-    async function removeRoomFromBackend(roomName) {
-      delete roomsInfoData[roomName];
-      allPostsData = allPostsData.filter(p => p.room !== roomName);
-      currentActiveRoom = "メインルーム";
-      loadRoomsList();
-      refreshList();
-      if (supabaseClient) {
-        await supabaseClient.from('rooms').delete().eq('name', roomName);
-        await supabaseClient.from('posts').delete().eq('room', roomName);
-      } else {
-        localStorage.setItem('roomsInfoData11', JSON.stringify(roomsInfoData));
-        localStorage.setItem('allPostsData11', JSON.stringify(allPostsData));
-      }
-    }
-
-    function switchSidebarTab(tabName) {
-      ['rooms', 'saved', 'emergency', 'escapeSettings'].forEach(t => {
-        document.getElementById(`sidebarContent_${t}`).style.display = (t === tabName) ? 'block' : 'none';
-        document.getElementById(`tabBtn_${t}`).className = 'sidebar-tab' + ((t === tabName) ? ' active' : '');
-      });
-    }
-
-    function toggleDarkMode() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
-      localStorage.setItem('myBoardTheme', isDark ? 'light' : 'dark');
-    }
-
-    if (localStorage.getItem('myBoardTheme') === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-
-    function saveUserSettings() {
-      const name = document.getElementById('usernameInput').value.trim();
-      localStorage.setItem('myWikiUsername11', name);
-      refreshList();
-    }
-
-    const savedName = localStorage.getItem('myWikiUsername11');
-    if (savedName) document.getElementById('usernameInput').value = savedName;
-
-    function isSystemMainRoom(name) {
-      return name === "メインルーム" || /^メインルーム\d+$/.test(name);
-    }
-
-    window.switchRoom = () => {
-      const select = document.getElementById('currentRoomSelect');
-      if (select) {
-        currentActiveRoom = select.value;
-        document.getElementById('currentRoomTitle').innerText = currentActiveRoom;
-        loadRoomsList();
-        refreshList();
-      }
-    };
-
-    window.createNewRoom = () => {
-      const input = document.getElementById('newRoomInput');
-      const rName = input.value.trim();
-      if (!rName) return;
-      if (roomsInfoData[rName] || rName === "メインルーム") {
-        alert("⚠️ その部屋はすでに存在します。");
-        return;
-      }
-      saveRoomToBackend(rName, null);
-      currentActiveRoom = rName;
-      input.value = "";
-      loadRoomsList();
-      refreshList();
-    };
-
-    window.toggleRoomPin = () => {
-      if (isSystemMainRoom(currentActiveRoom)) return;
-      const currentPin = roomsInfoData[currentActiveRoom]?.pin;
-      if (currentPin) {
-        saveRoomToBackend(currentActiveRoom, null);
-        alert("🔓 部屋の鍵を解除しました。");
-      } else {
-        const pin = prompt("🔒 部屋の暗証番号（PIN）を入力してください:");
-        if (pin) {
-          saveRoomToBackend(currentActiveRoom, pin);
-          alert("🔒 部屋に鍵を設定しました。");
-        }
-      }
-      loadRoomsList();
-    };
-
-    window.deleteCurrentRoom = (confirmRequired) => {
-      if (isSystemMainRoom(currentActiveRoom)) {
-        alert("⚠️ メインルームシリーズを削除することはできません。");
-        return;
-      }
-      if (confirmRequired && !confirm(`部屋「${currentActiveRoom}」を完全に削除しますか？`)) return;
-      removeRoomFromBackend(currentActiveRoom);
-    };
-
-    function getNextMainRoomName(currentName) {
-      if (currentName === "メインルーム") return "メインルーム2";
-      const match = currentName.match(/^メインルーム(\d+)$/);
-      if (match) return `メインルーム${parseInt(match[1]) + 1}`;
-      return "メインルーム2";
-    }
-
-    window.handleImageSelect = (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width, height = img.height;
-          const maxDim = 800;
-          if (width > height && width > maxDim) { height *= maxDim / width; width = maxDim; }
-          else if (height > maxDim) { width *= maxDim / height; height = maxDim; }
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, width, height);
-          selectedImageData = canvas.toDataURL('image/jpeg', 0.7);
-          document.getElementById('selectedImageName').innerText = `(画像圧縮・選択済)`;
+    function loadImage(file, i, cell) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                cellsData[i].img = img;
+                cell.querySelector('.placeholder').style.display = 'none';
+                // Cover設定
+                const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
+                cellsData[i].scale = ratio;
+                cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
+                cellsData[i].y = (CELL_PX - img.height * ratio) / 2;
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width; canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                canvas.style.display = 'block';
+                cellsData[i].canvas = canvas;
+                cell.appendChild(canvas);
+                draw(i);
+            };
+            img.src = e.target.result;
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    };
-
-    window.cancelImage = () => {
-      selectedImageData = null;
-      document.getElementById('imageFileInput').value = '';
-      document.getElementById('selectedImageName').innerText = '';
-    };
-
-    window.togglePollCreator = () => {
-      isPollCreating = !isPollCreating;
-      document.getElementById('pollCreatorArea').style.display = isPollCreating ? 'block' : 'none';
-    };
-
-    window.addMemo = () => {
-      const roomPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-      if (roomPosts.length >= 999) {
-        if (isSystemMainRoom(currentActiveRoom)) {
-          const nextRoomName = getNextMainRoomName(currentActiveRoom);
-          if (!roomsInfoData[nextRoomName]) saveRoomToBackend(nextRoomName, null);
-          alert(`📌 999投稿に達しました。新しい部屋「${nextRoomName}」へ自動移行します！`);
-          currentActiveRoom = nextRoomName;
-          loadRoomsList();
-          refreshList();
-        } else {
-          alert("⚠️ この部屋は999投稿に達したため新しく親投稿は作成できません。");
-          return;
-        }
-      }
-
-      const el = document.getElementById('inputText');
-      const text = el.value;
-      const name = document.getElementById('usernameInput').value.trim() || '名無し';
-      const isSpoiler = document.getElementById('isSpoilerCheck').checked;
-
-      let pollData = null;
-      if (isPollCreating) {
-        const q = document.getElementById('pollQuestionInput').value.trim();
-        const o1 = document.getElementById('pollOpt1Input').value.trim();
-        const o2 = document.getElementById('pollOpt2Input').value.trim();
-        if (q && o1 && o2) {
-          pollData = { question: q, options: [{ text: o1, votes: 0 }, { text: o2, votes: 0 }], voters: [] };
-        }
-      }
-
-      if (!text.trim() && !selectedImageData && !pollData) return;
-
-      const nextIndex = roomPosts.length > 0 ? Math.max(...roomPosts.map(p => p.indexNum || 0)) + 1 : 1;
-
-      const newPost = {
-        id: "p_" + Date.now(),
-        firebaseKey: "key_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-        room: currentActiveRoom,
-        indexNum: nextIndex,
-        author: name,
-        authorUid: generateUserUID(name),
-        time: getNowString(),
-        timestamp: Date.now(),
-        text: text,
-        image: selectedImageData,
-        poll: pollData,
-        isSpoiler: isSpoiler,
-        isPinned: false,
-        reactions: { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 },
-        replies: []
-      };
-
-      savePostToBackend(newPost);
-      el.value = '';
-      window.cancelImage();
-      document.getElementById('isSpoilerCheck').checked = false;
-      isPollCreating = false;
-      document.getElementById('pollCreatorArea').style.display = 'none';
-      document.getElementById('pollQuestionInput').value = '';
-      document.getElementById('pollOpt1Input').value = '';
-      document.getElementById('pollOpt2Input').value = '';
-    };
-
-    window.votePoll = (fbKey, optIdx) => {
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (!post || !post.poll) return;
-      const myUid = generateUserUID(document.getElementById('usernameInput').value.trim() || '名無し');
-      if (!post.poll.voters) post.poll.voters = [];
-      if (post.poll.voters.includes(myUid)) {
-        alert("⚠️ すでにこの投票に参加しています。");
-        return;
-      }
-      post.poll.voters.push(myUid);
-      post.poll.options[optIdx].votes = (post.poll.options[optIdx].votes || 0) + 1;
-      updatePostInBackend(post);
-    };
-
-    window.savePostToMyFolder = (fbKey) => {
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (!post) return;
-      if (mySavedPostsData.some(p => p.firebaseKey === fbKey)) {
-        alert("💡 すでに保存されています。");
-        return;
-      }
-      mySavedPostsData.push(JSON.parse(JSON.stringify(post)));
-      localStorage.setItem('mySavedPostsData11', JSON.stringify(mySavedPostsData));
-      refreshList();
-      switchSidebarTab('saved');
-      alert("💾 保存しました！");
-    };
-
-    window.removeSavedPost = (fbKey) => {
-      mySavedPostsData = mySavedPostsData.filter(p => p.firebaseKey !== fbKey);
-      localStorage.setItem('mySavedPostsData11', JSON.stringify(mySavedPostsData));
-      refreshList();
-    };
-
-    window.hideDeleteRequest = (fbKey) => {
-      if (!confirm("非表示にしますか？")) return;
-      hiddenRequestsData.push(fbKey);
-      localStorage.setItem('hiddenRequestsData11', JSON.stringify(hiddenRequestsData));
-      refreshList();
-    };
-
-    window.togglePin = (fbKey) => {
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post) { post.isPinned = !post.isPinned; updatePostInBackend(post); }
-    };
-
-    window.deleteMemo = (fbKey) => {
-      if (!confirm('削除しますか？')) return;
-      removePostFromBackend(fbKey);
-    };
-
-    window.revealSpoiler = (id) => { openedSpoilers.push(id); refreshList(); };
-    window.hideSpoiler = (id) => { openedSpoilers = openedSpoilers.filter(sid => sid !== id); refreshList(); };
-
-    window.toggleReaction = (fbKey, emoji) => {
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post) {
-        if (!post.reactions) post.reactions = { "❤️": 0, "👍": 0, "😆": 0, "😢": 0, "🎉": 0 };
-        post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
-        updatePostInBackend(post);
-      }
-    };
-
-    window.setReplyTarget = (postId, targetNum) => {
-      const input = document.getElementById(`repInput_${postId}`);
-      if (input) { input.value = `>>#${targetNum} ` + input.value; input.focus(); }
-    };
-
-    window.addReply = (fbKey, postId) => {
-      const input = document.getElementById(`repInput_${postId}`);
-      if (!input) return;
-      const text = input.value.trim();
-      if (!text) return;
-      const myName = document.getElementById('usernameInput').value.trim() || '名無し';
-
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post) {
-        if (!post.replies) post.replies = [];
-        const nextRepIdx = post.replies.length + 1;
-        post.replies.push({
-          indexNum: `${post.indexNum}-${nextRepIdx}`,
-          author: myName,
-          authorUid: generateUserUID(myName),
-          text: text,
-          time: getNowString()
-        });
-        updatePostInBackend(post);
-        input.value = "";
-      }
-    };
-
-    window.deleteReply = (fbKey, rIdx) => {
-      if (!confirm('返信を削除しますか？')) return;
-      const post = allPostsData.find(p => p.firebaseKey === fbKey);
-      if (post && post.replies) { post.replies.splice(rIdx, 1); updatePostInBackend(post); }
-    };
-
-    window.translateText = async (elementId) => {
-      const targetEl = document.getElementById(elementId);
-      if (!targetEl) return;
-      const originalText = targetEl.getAttribute('data-raw-text') || "";
-      if (targetEl.getAttribute('data-is-translated') === 'true') {
-        targetEl.innerHTML = linkify(originalText);
-        targetEl.setAttribute('data-is-translated', 'false');
-        return;
-      }
-      targetEl.innerText = "⏳ 翻訳中...";
-      try {
-        const cleanText = originalText.replace(/>>#\d+(-\d+)?\s*/g, '').trim();
-        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ja&dt=t&q=${encodeURIComponent(cleanText)}`);
-        const data = await res.json();
-        if (data && data[0]) {
-          let translatedResult = "";
-          data[0].forEach(sentence => { if (sentence[0]) translatedResult += sentence[0]; });
-          targetEl.innerHTML = "🇯🇵 <b>[翻訳]:</b> " + linkify(translatedResult);
-          targetEl.setAttribute('data-is-translated', 'true');
-        } else { targetEl.innerText = "❌ 翻訳できませんでした"; }
-      } catch (e) { targetEl.innerText = "❌ エラーが発生しました"; }
-    };
-
-    window.speakText = (elementId) => {
-      const targetEl = document.getElementById(elementId);
-      if (!targetEl) return;
-      const rawText = targetEl.getAttribute('data-raw-text') || "";
-      window.speechSynthesis.cancel();
-      const cleanText = rawText.replace(/>>#\d+(-\d+)?\s*/g, '');
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'ja-JP';
-      window.speechSynthesis.speak(utterance);
-    };
-
-    function generateUserUID(name) {
-      let hash = 0;
-      const str = (name || '名無し') + "secret_salt";
-      for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
+        reader.readAsDataURL(file);
     }
 
-    function getNowString() {
-      const now = new Date();
-      return `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    }
-
-    function linkify(text) {
-      if (!text) return "";
-      let safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      safeText = safeText.replace(/&gt;&gt;#([0-9\-]+)/g, (match, targetNum) => `<span class="anchor-link">&gt;&gt;#${targetNum}</span>`);
-      return safeText.replace(/(https?:\/\/[^\s]+)/g, url => `<a href="${url}" target="_blank">${url}</a>`);
-    }
-
-    function loadRoomsList() {
-      let allRoomNamesSet = new Set(["メインルーム"]);
-      Object.keys(roomsInfoData).forEach(r => allRoomNamesSet.add(r));
-      allPostsData.forEach(p => { if (p.room) allRoomNamesSet.add(p.room); });
-
-      const sortedRooms = Array.from(allRoomNamesSet).sort((a, b) => {
-        if (a === "メインルーム") return -1;
-        if (b === "メインルーム") return 1;
-        return a.localeCompare(b);
-      });
-
-      let roomControlHTML = `<select id="currentRoomSelect" onchange="switchRoom()" style="padding:4px; font-size:12px; border-radius:4px; border:1px solid var(--border-color);">`;
-      sortedRooms.forEach(rName => {
-        const isLocked = rName !== "メインルーム" && roomsInfoData[rName]?.pin;
-        roomControlHTML += `<option value="${rName}">${rName}${isLocked ? " 🔒" : ""}</option>`;
-      });
-      roomControlHTML += `</select>`;
-      
-      if (!isSystemMainRoom(currentActiveRoom)) {
-        roomControlHTML += ` <button onclick="toggleRoomPin()" style="font-size:11px; padding:3px 6px;">🔑鍵</button>`;
-        roomControlHTML += ` <button onclick="deleteCurrentRoom(true)" style="font-size:11px; padding:3px 6px; color:#ef4444;">削除</button>`;
-      }
-      document.getElementById('roomControlButtons').innerHTML = roomControlHTML;
-      const sel = document.getElementById('currentRoomSelect');
-      if (sel) sel.value = currentActiveRoom;
-
-      const container = document.getElementById('roomListContainer');
-      container.innerHTML = "";
-      sortedRooms.forEach(rName => {
-        const isLocked = rName !== "メインルーム" && roomsInfoData[rName]?.pin;
-        const count = allPostsData.filter(p => p.room === rName).length;
-        const div = document.createElement('div');
-        div.className = 'room-item' + (currentActiveRoom === rName ? ' active' : '');
-        div.innerHTML = `<strong>${isLocked ? '🔒 ' : ''}${rName}</strong> <span style="font-size:11px; opacity:0.8;">(${count})</span>`;
-        div.onclick = () => { currentActiveRoom = rName; document.getElementById('currentRoomTitle').innerText = rName; loadRoomsList(); refreshList(); };
-        container.appendChild(div);
-      });
-    }
-
-    function refreshList() {
-      const list = document.getElementById('memoList');
-      if (!list) return;
-      list.innerHTML = '';
-      const emergencyList = document.getElementById('emergencyList');
-      const savedListContainer = document.getElementById('savedPostsListContainer');
-      if (emergencyList) emergencyList.innerHTML = '';
-      if (savedListContainer) savedListContainer.innerHTML = '';
-
-      const targetPosts = allPostsData.filter(p => p.room === currentActiveRoom);
-      const isRoomFull = targetPosts.length >= 999;
-      const warnMsg = document.getElementById('roomFullWarningMessage');
-      const inputTxt = document.getElementById('inputText');
-      const addBtn = document.getElementById('addPostBtn');
-
-      if (warnMsg && inputTxt && addBtn) {
-        if (isRoomFull) {
-          warnMsg.style.display = "block";
-          inputTxt.disabled = true;
-          addBtn.disabled = true;
-        } else {
-          warnMsg.style.display = "none";
-          inputTxt.disabled = false;
-          addBtn.disabled = false;
-        }
-      }
-
-      if (savedListContainer) {
-        if (mySavedPostsData.length === 0) {
-          savedListContainer.innerHTML = '<div style="color:#64748b; text-align:center; padding:10px; font-size:12px;">保存された投稿はありません</div>';
-        } else {
-          mySavedPostsData.slice().reverse().forEach(sp => {
-            const item = document.createElement('div');
-            item.className = 'post';
-            item.innerHTML = `
-              <div style="font-size:11px; color:#64748b; margin-bottom:4px; display:flex; justify-content:space-between;">
-                <span>🚪 部屋: <b>${sp.room}</b> (#${sp.indexNum})</span>
-                <span style="color:#ef4444; cursor:pointer;" onclick="removeSavedPost('${sp.firebaseKey}')">解除 ❌</span>
-              </div>
-              <div style="font-weight:bold; font-size:12px; margin-bottom:4px;">👤 ${sp.author}:</div>
-              <div style="font-size:13px; word-break:break-all;">${linkify(sp.text)}</div>
-            `;
-            savedListContainer.appendChild(item);
-          });
-        }
-      }
-
-      if (emergencyList) {
-        allPostsData.forEach(post => {
-          if (post.text && post.text.includes('@')) {
-            if (hiddenRequestsData.includes(post.firebaseKey)) return;
-            const emItem = document.createElement('div');
-            emItem.className = 'post';
-            emItem.innerHTML = `
-              <div style="font-size:12px; margin-bottom:6px;">⚠️ <b>部屋:</b> 「${post.room}」 (#${post.indexNum})</div>
-              <div style="font-size:13px; margin-bottom:8px; font-style:italic;">${linkify(post.text)}</div>
-              <button onclick="hideDeleteRequest('${post.firebaseKey}')" style="font-size:11px;">❌ 一覧から非表示</button>
-            `;
-            emergencyList.appendChild(emItem);
-          }
-        });
-        if (emergencyList.innerHTML === '') emergencyList.innerHTML = '<div style="color:#64748b; text-align:center; font-size:12px;">依頼はありません</div>';
-      }
-
-      const pinned = targetPosts.filter(p => p.isPinned);
-      const normal = targetPosts.filter(p => !p.isPinned);
-      [...pinned, ...normal.slice().reverse()].forEach(post => {
-        const div = document.createElement('div');
-        div.className = 'post' + (post.isPinned ? ' pinned' : '');
+    function applyConstraint(d, size) {
+        const imgW = d.img.width * d.scale;
+        const imgH = d.img.height * d.scale;
+        // 最小スケール制限（枠より小さくならないように）
+        if(imgW < size) { d.scale = size / d.img.width; }
+        if(imgH < size) { d.scale = size / d.img.height; }
         
-        let contentHtml = `
-          <div class="post-header">
-            <div>
-              <span style="font-weight:bold; color:var(--primary-color);">#${post.indexNum}</span>
-              <span class="post-author">👤 ${post.author}</span>
-              <span class="user-uid">ID:${post.authorUid || '-----'}</span>
-            </div>
-            <div>
-              <button onclick="togglePin('${post.firebaseKey}')" style="font-size:10px; padding:2px 4px;">${post.isPinned ? '📌解除' : '📌固定'}</button>
-              <button onclick="deleteMemo('${post.firebaseKey}')" style="font-size:10px; padding:2px 4px; color:#ef4444;">❌</button>
-            </div>
-          </div>
-        `;
-
-        if (post.isSpoiler && !openedSpoilers.includes(post.id)) {
-          contentHtml += `<button style="width:100%; padding:10px; background:rgba(0,0,0,0.03); border:1px dashed var(--border-color); cursor:pointer; font-weight:bold; border-radius:6px;" onclick="revealSpoiler('${post.id}')">⚠️ ワンクッション投稿を表示する</button>`;
-        } else {
-          const textId = `text_main_${post.id}`;
-          if (post.text) {
-            contentHtml += `<div class="post-text" id="${textId}">${linkify(post.text)}</div>`;
-            setTimeout(() => {
-              const el = document.getElementById(textId);
-              if (el) el.setAttribute('data-raw-text', post.text);
-            }, 0);
-          }
-
-          if (post.image) {
-            contentHtml += `<img class="attached-img" src="${post.image}">`;
-          }
-
-          if (post.poll && post.poll.options) {
-            let totalVotes = post.poll.options.reduce((sum, opt) => sum + (opt.votes || 0), 0);
-            let pollHtml = `<div class="poll-container"><div style="font-weight:bold; font-size:13px; margin-bottom:6px;">📊 ${linkify(post.poll.question)}</div>`;
-            post.poll.options.forEach((opt, oIdx) => {
-              let percentage = totalVotes > 0 ? Math.round(((opt.votes || 0) / totalVotes) * 100) : 0;
-              pollHtml += `
-                <div class="poll-option" onclick="votePoll('${post.firebaseKey}', ${oIdx})">
-                  <span>${opt.text}</span>
-                  <span style="font-size:11px; color:#64748b;">${opt.votes || 0}票 (${percentage}%)</span>
-                </div>
-              `;
-            });
-            pollHtml += `<div style="font-size:10px; color:#64748b; text-align:right; margin-top:4px;">総投票数: ${totalVotes}票</div></div>`;
-            contentHtml += pollHtml;
-          }
-
-          if (post.isSpoiler) {
-            contentHtml += `<div style="text-align:right; margin-top:4px;"><span style="font-size:11px; cursor:pointer; color:#d97706;" onclick="hideSpoiler('${post.id}')">⚠️ 再び隠す</span></div>`;
-          }
-
-          let reactBtns = '';
-          ["❤️", "👍", "😆", "😢", "🎉"].forEach(e => {
-            reactBtns += `<button onclick="toggleReaction('${post.firebaseKey}', '${e}')" style="font-size:11px; padding:2px 6px; margin-right:4px;">${e} ${(post.reactions && post.reactions[e]) || 0}</button>`;
-          });
-
-          contentHtml += `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid var(--border-color); padding-top:8px;">
-              <div>${reactBtns}</div>
-              <div style="display:flex; gap:4px;">
-                <button onclick="savePostToMyFolder('${post.firebaseKey}')" style="font-size:11px; padding:2px 6px;">💾 保存</button>
-                <button onclick="setReplyTarget('${post.id}', '${post.indexNum}')" style="font-size:11px; padding:2px 6px;">💬 返信</button>
-                ${post.text ? `<button onclick="speakText('${textId}')" style="font-size:11px; padding:2px 6px;">🗣️</button><button onclick="translateText('${textId}')" style="font-size:11px; padding:2px 6px;">🌐</button>` : ''}
-              </div>
-            </div>
-          `;
-
-          contentHtml += `<div class="replies-box">`;
-          (post.replies || []).forEach((rep, rIdx) => {
-            const repTextId = `text_rep_${post.id}_${rIdx}`;
-            contentHtml += `
-              <div class="reply-item">
-                <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:4px;">
-                  <span><b>#${rep.indexNum}</b> 👤 ${rep.author}</span>
-                  <div>
-                    <span style="cursor:pointer;" onclick="setReplyTarget('${post.id}', '${rep.indexNum}')">💬</span>
-                    <span style="cursor:pointer; color:#ef4444; margin-left:4px;" onclick="deleteReply('${post.firebaseKey}', ${rIdx})">❌</span>
-                  </div>
-                </div>
-                <div style="word-break:break-all;" id="${repTextId}">${linkify(rep.text)}</div>
-                <div style="margin-top:4px; display:flex; gap:4px;">
-                  <button onclick="speakText('${repTextId}')" style="font-size:10px; padding:1px 4px;">🗣️</button>
-                  <button onclick="translateTest('${repTextId}')" style="font-size:10px; padding:1px 4px;">🌐</button>
-                </div>
-              </div>
-            `;
-            setTimeout(() => {
-              const el = document.getElementById(repTextId);
-              if (el) el.setAttribute('data-raw-text', rep.text);
-            }, 0);
-          });
-
-          contentHtml += `
-            <div style="margin-top:8px; display:flex; gap:5px;">
-              <input type="text" id="repInput_${post.id}" placeholder="この投稿に返信..." style="margin:0; font-size:12px;">
-              <button onclick="addReply('${post.firebaseKey}', '${post.id}')" style="font-size:12px; white-space:nowrap;">返信</button>
-            </div>
-          </div>`;
-        }
-
-        div.innerHTML = contentHtml;
-        list.appendChild(div);
-      });
+        // 位置制限（端が見えないように）
+        d.x = Math.min(0, Math.max(d.x, size - (d.img.width * d.scale)));
+        d.y = Math.min(0, Math.max(d.y, size - (d.img.height * d.scale)));
     }
 
-    initApp();
-  </script>
+    function draw(i) {
+        const d = cellsData[i];
+        d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
+    }
+
+    function generateHighResImage() {
+        const size = 1500; // 出力サイズ
+        const canvas = document.createElement('canvas');
+        const count = currentLayout === '3x3' ? 3 : 2;
+        canvas.width = canvas.height = size * count;
+        const ctx = canvas.getContext('2d');
+        
+        cellsData.forEach((d, i) => {
+            if(!d.img) return;
+            const x = (i % count) * size;
+            const y = Math.floor(i / count) * size;
+            const ratio = size / CELL_PX;
+            ctx.drawImage(d.img, d.x * ratio, d.y * ratio, d.img.width * d.scale * ratio, d.img.height * d.scale * ratio, x, y, size, size);
+        });
+        const link = document.createElement('a');
+        link.download = 'collage.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    createCells();
+</script>
 </body>
 </html>
