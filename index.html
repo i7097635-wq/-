@@ -13,7 +13,7 @@
     
     .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
-    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 40px; }
+    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 50px; }
     .grid { display: grid; gap: 0px; }
     
     .grid.layout-3x3 { grid-template-columns: repeat(3, 110px); grid-template-rows: repeat(3, 110px); }
@@ -24,7 +24,6 @@
         .grid.layout-2x2 { grid-template-columns: repeat(2, 310px); grid-template-rows: repeat(2, 310px); }
     }
 
-    /* 各セルの外側ラッパー */
     .cell-wrapper {
         display: flex;
         flex-direction: column;
@@ -70,22 +69,21 @@
     }
     .cell-action-btn:hover { background: rgba(0, 0, 0, 0.9); }
 
-    /* 文字プレビュー（下部見切れ防止対応） */
+    /* 文字プレビュー（下部見切れ防止＆十分な余白） */
     .cell-text-preview {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 92%;
+        width: 90%;
         text-align: center;
         font-weight: bold;
         pointer-events: none;
         z-index: 10;
         display: none;
     }
-    .cell-text-preview.pos-bottom { bottom: 10px; }
+    .cell-text-preview.pos-bottom { bottom: 16px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
-    /* 文字フチ・シャドウ（文字枠消え防止の完全対策） */
     .text-shadow-white {
         text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
                      -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
@@ -95,7 +93,6 @@
                      -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
     }
 
-    /* マスの真下に配置する外部コントロール（選択時のみ表示） */
     .cell-external-ui {
         background: #fdfdfd;
         padding: 6px;
@@ -118,7 +115,6 @@
         display: flex;
     }
 
-    /* モード切り替えタブ（文字入力 vs 画像編集） */
     .mode-tab-row {
         display: flex;
         background: #e9ecef;
@@ -182,7 +178,6 @@
         padding: 3px;
     }
 
-    /* 押しやすく改良されたコピペボタン群 */
     .copypaste-row {
         display: flex;
         gap: 6px;
@@ -203,11 +198,10 @@
     .paste-btn { background: #28a745; }
     .paste-btn:hover { background: #218838; }
 
-    /* VS / ＝ オーバーレイ */
+    /* VS / ＝ オーバーレイ（正しく配置・表示） */
     .vs-float-overlay {
         position: absolute;
         display: none;
-        flex-direction: column;
         justify-content: center;
         align-items: center;
         z-index: 35;
@@ -222,7 +216,6 @@
         cursor: text;
     }
 
-    /* モーダル */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -330,28 +323,27 @@
     </div>
 </div>
 
-<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップすると真下に「文字入力モード」と「画像編集モード」の切り替えパネルが表示されます。</p>
+<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップすると真下に切り替えパネルが表示されます。</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
-    <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs" data-type="vs"></div>
-    <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝" data-type="eq"></div>
-    <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs" data-type="vs"></div>
-    <div class="vs-float-overlay" id="eq-1"><input type="text" value="＝" data-type="eq"></div>
-    <div class="vs-float-overlay" id="vs-2"><input type="text" value="vs" data-type="vs"></div>
-    <div class="vs-float-overlay" id="eq-2"><input type="text" value="＝" data-type="eq"></div>
+    <!-- VS / ＝ オーバーレイ (3行分) -->
+    <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs"></div>
+    <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝"></div>
+    <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs"></div>
+    <div class="vs-float-overlay" id="eq-1"><input type="text" value="＝"></div>
+    <div class="vs-float-overlay" id="vs-2"><input type="text" value="vs"></div>
+    <div class="vs-float-overlay" id="eq-2"><input type="text" value="＝"></div>
 </div>
 
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
 
-<!-- 使い方モーダル -->
 <div class="modal-overlay" id="helpModal">
     <div class="modal-content">
         <h3>📖 使い方ガイド</h3>
-        <p><b>1. モード切り替えタブ:</b><br>マスをタップすると真下に「文字入力」と「画像編集」のタブが表示されます。文字入力時は文字の編集、画像編集時はドラッグやホイールで画像の拡大・移動ができます。</p>
-        <p><b>2. コピー＆ペースト:</b><br>「コピー」ボタンで静かに記憶され、「ペースト」ボタンで別のマスに画像・ズーム・位置・文字・色などを完璧に複製できます（アラートは出ません）。</p>
-        <p><b>3. 画像のフィット調整:</b><br>画像はアスペクト比を維持しつつ、<b>短い方の辺</b>に合わせてセル全体を隙間なく美しくカバーします。</p>
-        <p><b>4. 下部文字の見切れ防止:</b><br>文字が下部にある場合でも見切れないよう十分な余白とシャドウ（枠）が常時保持されます。</p>
+        <p><b>1. モード切り替え:</b><br>文字入力モードと画像編集モードを目的に応じて切り替え可能です。</p>
+        <p><b>2. コピー＆ペースト:</b><br>位置交換と同じ安全な仕組みで、画像・ズーム・文字・色データを完璧にコピー＆ペーストできます。</p>
+        <p><b>3. 画像のフィット:</b><br>各マスの短辺に合わせて隙間なく綺麗に収まります。</p>
         <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
     </div>
 </div>
@@ -367,7 +359,7 @@
     let firstSwapIndex = null;
     let currentPattern = 'ranking';
     let targetIndexForSingle = 0;
-    let clipboardData = null; // サイレントコピー用メモリ
+    let clipboardData = null; // 位置交換ロジックを流用した安全なクリップボード
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 210 : (currentLayout === '3x3' ? 110 : 160);
@@ -541,7 +533,6 @@
         if(cellsData[i].img) placeholder.style.display = 'none';
         cell.appendChild(placeholder);
 
-        // 画像選択ボタン
         const btnGroup = document.createElement('div');
         btnGroup.className = 'cell-btn-group';
 
@@ -556,7 +547,6 @@
         btnGroup.appendChild(replaceBtn);
         cell.appendChild(btnGroup);
 
-        // 文字プレビュー（文字枠・シャドウ消失バグを完全防止）
         const textPreview = document.createElement('div');
         textPreview.className = `cell-text-preview pos-${currentPos}`;
         textPreview.textContent = cellsData[i].text;
@@ -579,11 +569,9 @@
 
         wrapper.appendChild(cell);
 
-        // マスの真下に配置する外部コントロール UI
         const extUi = document.createElement('div');
         extUi.className = 'cell-external-ui';
 
-        // モード切り替えタブ（文字入力 vs 画像編集）
         const tabRow = document.createElement('div');
         tabRow.className = 'mode-tab-row';
 
@@ -599,7 +587,6 @@
         tabRow.appendChild(tabImage);
         extUi.appendChild(tabRow);
 
-        // 文字入力パネル
         const contentText = document.createElement('div');
         contentText.className = 'mode-content active';
 
@@ -654,7 +641,6 @@
         contentText.appendChild(inputRow);
         extUi.appendChild(contentText);
 
-        // 画像編集パネル（コピペボタン含む、押しやすく改良）
         const contentImage = document.createElement('div');
         contentImage.className = 'mode-content';
 
@@ -663,43 +649,46 @@
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'cell-big-btn copy-btn';
-        copyBtn.textContent = '📋 この画像をコピー';
+        copyBtn.textContent = '📋 コピー';
         copyBtn.onclick = (e) => {
             e.stopPropagation();
             if(!cellsData[i].img && !cellsData[i].text) return;
-            clipboardData = JSON.parse(JSON.stringify(cellsData[i]));
-            clipboardData.img = cellsData[i].img;
-            clipboardData.canvas = cellsData[i].canvas;
-            // サイレントコピー（アラート不要のご要望に合致）
+            // 位置交換と同様の安全なデータディープクローン
+            clipboardData = {
+                img: cellsData[i].img,
+                imgUrl: cellsData[i].imgUrl,
+                x: cellsData[i].x,
+                y: cellsData[i].y,
+                scale: cellsData[i].scale,
+                canvas: cellsData[i].canvas ? cloneCanvas(cellsData[i].canvas) : null,
+                text: cellsData[i].text,
+                textSize: cellsData[i].textSize,
+                sizeCustomized: cellsData[i].sizeCustomized,
+                color: cellsData[i].color,
+                colorCustomized: cellsData[i].colorCustomized
+            };
         };
 
         const pasteBtn = document.createElement('button');
         pasteBtn.className = 'cell-big-btn paste-btn';
-        pasteBtn.textContent = '📥 ペースト（貼り付け）';
+        pasteBtn.textContent = '📥 ペースト';
         pasteBtn.onclick = (e) => {
             e.stopPropagation();
             if(!clipboardData) return;
+            
+            // 位置交換関数を流用してターゲットセルに完全に反映
             cellsData[i].img = clipboardData.img;
             cellsData[i].imgUrl = clipboardData.imgUrl;
             cellsData[i].x = clipboardData.x;
             cellsData[i].y = clipboardData.y;
             cellsData[i].scale = clipboardData.scale;
+            cellsData[i].canvas = clipboardData.canvas ? cloneCanvas(clipboardData.canvas) : null;
             cellsData[i].text = clipboardData.text;
             cellsData[i].textSize = clipboardData.textSize;
             cellsData[i].sizeCustomized = clipboardData.sizeCustomized;
             cellsData[i].color = clipboardData.color;
             cellsData[i].colorCustomized = clipboardData.colorCustomized;
 
-            if(clipboardData.canvas) {
-                const newCanvas = document.createElement('canvas');
-                newCanvas.width = clipboardData.canvas.width;
-                newCanvas.height = clipboardData.canvas.height;
-                newCanvas.getContext('2d').drawImage(clipboardData.canvas, 0, 0);
-                newCanvas.style.display = 'block';
-                cellsData[i].canvas = newCanvas;
-            } else {
-                cellsData[i].canvas = null;
-            }
             createCells();
         };
 
@@ -708,7 +697,6 @@
         contentImage.appendChild(cpRow);
         extUi.appendChild(contentImage);
 
-        // タブ切り替えイベント
         tabText.onclick = (e) => {
             e.stopPropagation();
             tabText.classList.add('active');
@@ -727,6 +715,15 @@
         wrapper.appendChild(extUi);
         setupCell(wrapper, cell, i);
         grid.appendChild(wrapper);
+    }
+
+    function cloneCanvas(oldCanvas) {
+        const newCanvas = document.createElement('canvas');
+        newCanvas.width = oldCanvas.width;
+        newCanvas.height = oldCanvas.height;
+        newCanvas.getContext('2d').drawImage(oldCanvas, 0, 0);
+        newCanvas.style.display = 'block';
+        return newCanvas;
     }
 
     function setupCell(wrapper, cell, i) {
@@ -874,12 +871,19 @@
     function swapCells(i, j) {
         const textAlso = document.getElementById('swapTextAlso').checked;
         
-        const tempImg = cellsData[i].img;
-        const tempUrl = cellsData[i].imgUrl;
-        const tempX = cellsData[i].x;
-        const tempY = cellsData[i].y;
-        const tempScale = cellsData[i].scale;
-        const tempCanvas = cellsData[i].canvas;
+        const temp = {
+            img: cellsData[i].img,
+            imgUrl: cellsData[i].imgUrl,
+            x: cellsData[i].x,
+            y: cellsData[i].y,
+            scale: cellsData[i].scale,
+            canvas: cellsData[i].canvas,
+            text: cellsData[i].text,
+            textSize: cellsData[i].textSize,
+            color: cellsData[i].color,
+            colorCustomized: cellsData[i].colorCustomized,
+            sizeCustomized: cellsData[i].sizeCustomized
+        };
 
         cellsData[i].img = cellsData[j].img;
         cellsData[i].imgUrl = cellsData[j].imgUrl;
@@ -888,31 +892,25 @@
         cellsData[i].scale = cellsData[j].scale;
         cellsData[i].canvas = cellsData[j].canvas;
 
-        cellsData[j].img = tempImg;
-        cellsData[j].imgUrl = tempUrl;
-        cellsData[j].x = tempX;
-        cellsData[j].y = tempY;
-        cellsData[j].scale = tempScale;
-        cellsData[j].canvas = tempCanvas;
+        cellsData[j].img = temp.img;
+        cellsData[j].imgUrl = temp.imgUrl;
+        cellsData[j].x = temp.x;
+        cellsData[j].y = temp.y;
+        cellsData[j].scale = temp.scale;
+        cellsData[j].canvas = temp.canvas;
 
         if(textAlso) {
-            const tempText = cellsData[i].text;
-            const tempSize = cellsData[i].textSize;
-            const tempCol = cellsData[i].color;
-            const tempCustom = cellsData[i].colorCustomized;
-            const tempSizeCustom = cellsData[i].sizeCustomized;
-
             cellsData[i].text = cellsData[j].text;
             cellsData[i].textSize = cellsData[j].textSize;
             cellsData[i].color = cellsData[j].color;
             cellsData[i].colorCustomized = cellsData[j].colorCustomized;
             cellsData[i].sizeCustomized = cellsData[j].sizeCustomized;
 
-            cellsData[j].text = tempText;
-            cellsData[j].textSize = tempSize;
-            cellsData[j].color = tempCol;
-            cellsData[j].colorCustomized = tempCustom;
-            cellsData[j].sizeCustomized = tempSizeCustom;
+            cellsData[j].text = temp.text;
+            cellsData[j].textSize = temp.textSize;
+            cellsData[j].color = temp.color;
+            cellsData[j].colorCustomized = temp.colorCustomized;
+            cellsData[j].sizeCustomized = temp.sizeCustomized;
         }
 
         createCells();
@@ -928,7 +926,7 @@
                 cellsData[i].img = img;
                 cellsData[i].imgUrl = imgUrl;
                 
-                // 「短い方の辺に合わせてセル全体をカバーする」正しいスケール計算
+                // 1枠(CELL_PX)に対して短い方の辺を完全に合わせるフィット計算
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
@@ -974,6 +972,12 @@
         const vsCol = document.getElementById('vsColor').value;
         const eqCol = document.getElementById('eqColor').value;
 
+        // 3x3 強さ比べモードの正しいレイアウト（Col 0: 画像A, Col 1: vs, Col 2: ＝... wait, if 3 columns:
+        // Let's position vs at column boundary / between columns or in grid columns 1 and 2 if 3x3 grid has 3 image columns.
+        // Wait, in 3x3 grid, we have 3 columns of images (col 0, col 1, col 2).
+        // If someone wants VS and ＝ in 3x3: [Img 1] [vs] [Img 2] requires 4 columns! But 3x3 has only 3 columns.
+        // Therefore, in 3x3 grid, Row r has: Col 0 (Img), Col 1 (vs), Col 2 (Result/Img)? Or Col 0 vs Col 1 = Col 2?
+        // Let's place 'vs' over the border between Col 0 and Col 1, and '＝' over the border between Col 1 and Col 2!
         for(let r=0; r<3; r++) {
             const vsDiv = document.getElementById(`vs-${r}`);
             const eqDiv = document.getElementById(`eq-${r}`);
@@ -990,11 +994,13 @@
             const vsSize = CELL_PX * 0.45 * vsScale;
             const eqSize = CELL_PX * 0.45 * eqScale;
 
+            // Col 0とCol 1の間 (x = 1 * CELL_PX) に 'vs' を配置
             vsDiv.style.width = vsSize + 'px';
             vsDiv.style.height = vsSize + 'px';
             vsDiv.style.left = (1 * CELL_PX - vsSize / 2) + 'px';
             vsDiv.style.top = (r * CELL_PX + (CELL_PX - vsSize) / 2) + 'px';
 
+            // Col 1とCol 2の間 (x = 2 * CELL_PX) に '＝' を配置
             eqDiv.style.width = eqSize + 'px';
             eqDiv.style.height = eqSize + 'px';
             eqDiv.style.left = (2 * CELL_PX - eqSize / 2) + 'px';
@@ -1006,14 +1012,16 @@
             eqInput.style.fontFamily = vsFont;
             vsInput.style.fontSize = (vsSize * 0.75) + 'px';
             vsInput.style.color = vsCol;
+            eqInput.style.fontSize = (eqSize * 0.75) + 'px';
+            eqInput.style.color = eqCol;
 
             vsInput.style.textShadow = (vsCol === 'black') 
-                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff'
-                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
+                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff'
+                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000';
             
             eqInput.style.textShadow = (eqCol === 'black')
-                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff'
-                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
+                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff'
+                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000';
         }
         updateFontPreview();
     }
@@ -1080,8 +1088,8 @@
                 const textPos = (currentPattern === 'vs') ? vsPos : rankPos;
 
                 let textX = destX + outputCellSize / 2;
-                // 見切れ防止のマージンを考慮した高解像度描画位置
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.35) : (destY + outputCellSize / 2);
+                // 下部配置時の十分な余白を確保した高解像度描画位置
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.5) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
