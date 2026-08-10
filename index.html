@@ -30,10 +30,15 @@
     .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
-    .cell-replace-btn {
+    .cell-btn-group {
         position: absolute;
         top: 3px;
         right: 3px;
+        display: flex;
+        gap: 2px;
+        z-index: 25;
+    }
+    .cell-action-btn {
         background: rgba(0, 0, 0, 0.6);
         color: white;
         border: none;
@@ -41,11 +46,10 @@
         padding: 2px 5px;
         font-size: 0.65rem;
         cursor: pointer;
-        z-index: 25;
     }
-    .cell-replace-btn:hover { background: rgba(0, 0, 0, 0.8); }
+    .cell-action-btn:hover { background: rgba(0, 0, 0, 0.8); }
 
-    /* 入力コンテナ */
+    /* 入力コンテナ（下部時は十分余白を確保して下方に配置） */
     .cell-ui-container {
         position: absolute;
         left: 50%;
@@ -63,8 +67,7 @@
     }
     .cell.active-input .cell-ui-container { display: flex; }
     
-    /* 入力欄の位置（下部時は一番下に配置） */
-    .cell-ui-container.pos-bottom { bottom: 4px; }
+    .cell-ui-container.pos-bottom { bottom: 6px; }
     .cell-ui-container.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
     .cell-input-row {
@@ -116,8 +119,8 @@
         z-index: 10;
         display: none;
     }
-    /* 下部配置時、入力欄（高さ約26px+余白）と文字が被らないよう、上方に十分に余白を確保 */
-    .cell-text-preview.pos-bottom { bottom: 34px; }
+    /* 下部配置時、入力欄の高さ（約30px）＋余裕を持たせて上に逃がし、絶対に被らないように修正 */
+    .cell-text-preview.pos-bottom { bottom: 38px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
     /* 文字色に応じた動的文字枠（シャドウ） */
@@ -149,7 +152,7 @@
         cursor: text;
     }
 
-    /* モーダルウィンドウ（使い方） */
+    /* モーダルウィンドウ（使い方・コピー用） */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -174,6 +177,10 @@
         background: #007bff; color: white; border: none; padding: 8px 16px;
         border-radius: 4px; cursor: pointer; float: right; margin-top: 10px; font-weight: bold;
     }
+    .copy-target-btn {
+        display: block; width: 100%; padding: 8px; margin: 5px 0; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: pointer; text-align: left; font-size: 0.85rem;
+    }
+    .copy-target-btn:hover { background: #dee2e6; }
 
     #saveBtn { background: #28a745; color: white; padding: 12px 25px; border-radius: 50px; border: none; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 0.95rem; }
 </style>
@@ -221,7 +228,12 @@
         </select>
     </div>
     <div id="vsOptions" style="display:none;">
-        <span>フォント:</span>
+        <span>位置:</span>
+        <select id="textPositionVs" onchange="updateTextPositions()">
+            <option value="bottom">下部</option>
+            <option value="middle">真ん中</option>
+        </select>
+        <span style="margin-left:3px;">フォント:</span>
         <select id="vsFontFamily" onchange="updateVsOverlays()" style="padding:2px;">
             <option value="sans-serif">ゴシック</option>
             <option value="serif">明朝体</option>
@@ -250,11 +262,10 @@
     </div>
 </div>
 
-<p style="font-size: 0.8rem; color: #666; text-align: center; margin-top:0;">📱 マスをタップで文字入力 / 右上の「画像変更」で画像を選択</p>
+<p style="font-size: 0.8rem; color: #666; text-align: center; margin-top:0;">📱 マスをタップで文字入力 / 右上の「画像変更」や「コピー」で編集</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
-    <!-- 枠なし・浮動vs/＝（3行×2列分 = 計6箇所） -->
     <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs" data-type="vs"></div>
     <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝" data-type="eq"></div>
     <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs" data-type="vs"></div>
@@ -269,11 +280,21 @@
 <div class="modal-overlay" id="helpModal">
     <div class="modal-content">
         <h3>📖 使い方ガイド</h3>
-        <p><b>1. 画像の選択・変更:</b><br>各マスにある「画像選択」ボタンを押して画像を選びます。指やマウスのドラッグで位置調整、ピンチイン・アウト（ホイール）で拡大縮小ができます。</p>
-        <p><b>2. 文字の入力・変更:</b><br>どのモードでも、マスをタップすると下部に文字入力欄が現れます。文字、個別のサイズ、色（白・黒・赤・黄）を自由に変更できます。</p>
-        <p><b>3. モード切替:</b><br>・<b>ランキング:</b> 上部で全体サイズや文字色を一括変更できます。<br>・<b>強さ比べ:</b> 中央列に「vs」「＝」が配置され、それぞれの文字色やサイズを個別に調整できます。下部からの文字入力も可能です。</p>
-        <p><b>4. 保存:</b><br>画面下部の「高画質で保存」ボタンを押すと、自動的に超高画質なPNG画像としてダウンロードされます。</p>
+        <p><b>1. 画像の選択・変更:</b><br>各マスの「画像選択」で画像を選び、ドラッグやピンチ・ホイールで位置・サイズを調整できます。</p>
+        <p><b>2. 画像コピー機能 (NEW):</b><br>画像が入っているマスの「コピー」ボタンを押すと、その画像と全く同じ位置・大きさの状態で別のマスへ複製できます！</p>
+        <p><b>3. 文字の入力・変更:</b><br>マスをタップすると下部に文字入力欄が出現します。文字、個別サイズ、色（白・黒・赤・黄）を自由に変更可能です（強さ比べモードでも個別変更や一括変更が完全に効きます）。</p>
+        <p><b>4. 保存:</b><br>「高画質で保存」で超高画質なPNG画像がダウンロードされます。</p>
         <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
+    </div>
+</div>
+
+<!-- 画像コピー先選択用モーダル -->
+<div class="modal-overlay" id="copyModal">
+    <div class="modal-content">
+        <h3>📋 画像のコピー先を選択</h3>
+        <p style="font-size:0.85rem; color:#555;">コピー元の画像・表示位置をどのマスに複製しますか？</p>
+        <div id="copyTargetList"></div>
+        <button class="modal-close" onclick="closeCopyModal()">キャンセル</button>
     </div>
 </div>
 
@@ -288,6 +309,7 @@
     let firstSwapIndex = null;
     let currentPattern = 'ranking';
     let targetIndexForSingle = 0;
+    let sourceIndexForCopy = null;
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
@@ -295,6 +317,8 @@
 
     function openHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
     function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
+    
+    function closeCopyModal() { document.getElementById('copyModal').style.display = 'none'; }
 
     function updateFontPreview() {
         const select = document.getElementById('fontFamily');
@@ -401,12 +425,20 @@
     }
 
     function updateTextPositions() {
-        const pos = document.getElementById('textPosition').value;
+        // ランキングと強さ比べのそれぞれのセレクトボックスから同期して取得
+        const rankPos = document.getElementById('textPosition').value;
+        const vsPos = document.getElementById('textPositionVs').value;
+        const currentPos = (currentPattern === 'vs') ? vsPos : rankPos;
+
+        // 両方のセレクトボックスの値を一致させる
+        document.getElementById('textPosition').value = currentPos;
+        document.getElementById('textPositionVs').value = currentPos;
+
         document.querySelectorAll('.cell-ui-container').forEach(el => {
-            el.className = `cell-ui-container pos-${pos}`;
+            el.className = `cell-ui-container pos-${currentPos}`;
         });
         document.querySelectorAll('.cell-text-preview').forEach(p => {
-            p.className = `cell-text-preview pos-${pos}`;
+            p.className = `cell-text-preview pos-${currentPos}`;
         });
     }
 
@@ -420,7 +452,9 @@
         selectedIndices = [];
 
         const bg = '#fff';
-        const currentPos = document.getElementById('textPosition').value;
+        const rankPos = document.getElementById('textPosition').value;
+        const vsPos = document.getElementById('textPositionVs').value;
+        const currentPos = (currentPattern === 'vs') ? vsPos : rankPos;
         const defaultCol = document.getElementById('defaultTextColor').value;
         const defaultGlobalSize = Number(document.getElementById('globalTextSize').value) || 200;
 
@@ -435,7 +469,7 @@
         if(oldData[i]) {
             cellsData[i] = oldData[i];
         } else {
-            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: defaultGlobalSize, sizeCustomized: false, color: defaultCol, colorCustomized: false, selected:false };
+            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, imgUrl:null, text:'', textSize: defaultGlobalSize, sizeCustomized: false, color: defaultCol, colorCustomized: false, selected:false };
         }
         cellsData[i].selected = false;
         
@@ -449,15 +483,32 @@
         if(cellsData[i].img) placeholder.style.display = 'none';
         cell.appendChild(placeholder);
 
+        // ボタン群（画像変更 ＆ コピー）
+        const btnGroup = document.createElement('div');
+        btnGroup.className = 'cell-btn-group';
+
         const replaceBtn = document.createElement('button');
-        replaceBtn.className = 'cell-replace-btn';
+        replaceBtn.className = 'cell-action-btn';
         replaceBtn.textContent = cellsData[i].img ? '画像変更' : '画像選択';
         replaceBtn.onclick = (e) => {
             e.stopPropagation();
             targetIndexForSingle = i;
             triggerFileSelect(true);
         };
-        cell.appendChild(replaceBtn);
+        btnGroup.appendChild(replaceBtn);
+
+        if(cellsData[i].img) {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'cell-action-btn';
+            copyBtn.textContent = 'コピー';
+            copyBtn.style.background = '#28a745';
+            copyBtn.onclick = (e) => {
+                e.stopPropagation();
+                openCopyModalForIndex(i);
+            };
+            btnGroup.appendChild(copyBtn);
+        }
+        cell.appendChild(btnGroup);
 
         const textPreview = document.createElement('div');
         textPreview.className = `cell-text-preview pos-${currentPos}`;
@@ -655,6 +706,46 @@
         }, {passive:false});
     }
 
+    function openCopyModalForIndex(sourceIdx) {
+        sourceIndexForCopy = sourceIdx;
+        const listContainer = document.getElementById('copyTargetList');
+        listContainer.innerHTML = '';
+        const count = currentLayout === '3x3' ? 9 : 4;
+
+        for(let i=0; i<count; i++) {
+            if(i === sourceIdx) continue;
+            const btn = document.createElement('button');
+            btn.className = 'copy-target-btn';
+            btn.textContent = `マス ${i + 1} にコピーする`;
+            btn.onclick = () => {
+                executeCopyCell(sourceIdx, i);
+                closeCopyModal();
+            };
+            listContainer.appendChild(btn);
+        }
+        document.getElementById('copyModal').style.display = 'flex';
+    }
+
+    function executeCopyCell(fromIdx, toIdx) {
+        const source = cellsData[fromIdx];
+        if(!source || !source.img) return;
+
+        cellsData[toIdx].img = source.img;
+        cellsData[toIdx].imgUrl = source.imgUrl;
+        cellsData[toIdx].x = source.x;
+        cellsData[toIdx].y = source.y;
+        cellsData[toIdx].scale = source.scale;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = source.img.width;
+        canvas.height = source.img.height;
+        canvas.getContext('2d').drawImage(source.img, 0, 0);
+        canvas.style.display = 'block';
+        cellsData[toIdx].canvas = canvas;
+
+        createCells();
+    }
+
     function triggerFileSelect(isSingle) {
         const fileInput = document.getElementById('multiFileInput');
         fileInput.value = '';
@@ -730,11 +821,11 @@
         targetCell.style.backgroundColor = '';
         const reader = new FileReader();
         reader.onload = (e) => {
+            const imgUrl = e.target.result;
             const img = new Image();
             img.onload = () => {
                 cellsData[i].img = img;
-                targetCell.querySelector('.placeholder').style.display = 'none';
-                targetCell.querySelector('.cell-replace-btn').textContent = '画像変更';
+                cellsData[i].imgUrl = imgUrl;
                 
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
@@ -747,10 +838,10 @@
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 canvas.style.display = 'block';
                 cellsData[i].canvas = canvas;
-                targetCell.appendChild(canvas);
-                draw(i);
+                
+                createCells();
             };
-            img.src = e.target.result;
+            img.src = imgUrl;
         };
         reader.readAsDataURL(file);
     }
@@ -813,15 +904,13 @@
             eqInput.style.fontFamily = vsFont;
             vsInput.style.fontSize = (vsSize * 0.7) + 'px';
             vsInput.style.color = vsCol;
-            eqInput.style.color = eqCol;
 
-            // vs/＝の文字色に応じた影（黒文字のときは白枠、それ以外は黒枠）
             vsInput.style.textShadow = (vsCol === 'black') 
                 ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff'
                 : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
             
             eqInput.style.textShadow = (eqCol === 'black')
-                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px -2px 0 #fff'
+                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff'
                 : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
         }
         updateFontPreview();
@@ -875,7 +964,6 @@
                 const textColor = d.color || 'white';
                 ctx.fillStyle = textColor;
                 
-                // 黒文字なら白枠、それ以外は黒枠
                 if (textColor === 'black') {
                     ctx.strokeStyle = '#ffffff';
                 } else {
@@ -886,9 +974,12 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                const textPos = document.getElementById('textPosition').value;
+                const rankPos = document.getElementById('textPosition').value;
+                const vsPos = document.getElementById('textPositionVs').value;
+                const textPos = (currentPattern === 'vs') ? vsPos : rankPos;
+
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.1) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.25) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
