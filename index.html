@@ -3,28 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>超高画質・完全フチなしコラージュ＆比較メーカー</title>
+<title>超高画質・完全フチなしコラージュ＆比較メーカー（完全版）</title>
 <style>
-    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
-    .controls { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
-    button { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.85rem; }
+    body { font-family: sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
+    .controls { background: #fff; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
     button.active { background: #007bff; color: white; border-color: #0056b3; }
-    button.help-btn { background: #ffc107; border-color: #e0a800; font-weight: bold; }
+    button.help-btn { background: #ffc107; border-color: #e0a800; }
     
-    .sub-controls { background: #fff; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; font-size: 0.8rem; }
+    .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
-    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 30px; }
+    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 40px; }
     .grid { display: grid; gap: 0px; }
     
-    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
-    .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 110px); grid-template-rows: repeat(3, 110px); }
+    .grid.layout-2x2 { grid-template-columns: repeat(2, 160px); grid-template-rows: repeat(2, 160px); }
     
     @media (min-width: 600px) {
-        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
-        .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
+        .grid.layout-3x3 { grid-template-columns: repeat(3, 210px); grid-template-rows: repeat(3, 210px); }
+        .grid.layout-2x2 { grid-template-columns: repeat(2, 310px); grid-template-rows: repeat(2, 310px); }
     }
 
-    /* 各セルの外側ラッパー（マス本体 ＋ 真下の入力欄群を同梱） */
+    /* 各セルの外側ラッパー */
     .cell-wrapper {
         display: flex;
         flex-direction: column;
@@ -42,50 +42,50 @@
         width: 100%; 
         height: 100%; 
         flex: 1;
-        border: 1px solid #bbb;
+        border: 1px solid #ccc;
         box-sizing: border-box;
     }
     .cell.dragging { cursor: grabbing; }
     .cell-wrapper.selected .cell { border: 3px solid #ff4757; z-index: 5; }
 
-    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
+    .placeholder { pointer-events: none; color: #aaa; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.5rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
     .cell-btn-group {
         position: absolute;
-        top: 3px;
-        right: 3px;
+        top: 5px;
+        right: 5px;
         display: flex;
-        gap: 2px;
+        gap: 4px;
         z-index: 25;
     }
     .cell-action-btn {
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.7);
         color: white;
         border: none;
-        border-radius: 3px;
-        padding: 2px 5px;
-        font-size: 0.65rem;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.7rem;
         cursor: pointer;
     }
-    .cell-action-btn:hover { background: rgba(0, 0, 0, 0.8); }
+    .cell-action-btn:hover { background: rgba(0, 0, 0, 0.9); }
 
-    /* 文字プレビュー（マス内） */
+    /* 文字プレビュー（下部見切れ防止対応） */
     .cell-text-preview {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 100%;
+        width: 92%;
         text-align: center;
         font-weight: bold;
         pointer-events: none;
         z-index: 10;
         display: none;
     }
-    .cell-text-preview.pos-bottom { bottom: 8px; }
+    .cell-text-preview.pos-bottom { bottom: 10px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
-    /* 文字色に応じた文字フチ（シャドウ） */
+    /* 文字フチ・シャドウ（文字枠消え防止の完全対策） */
     .text-shadow-white {
         text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
                      -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
@@ -95,31 +95,60 @@
                      -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
     }
 
-    /* 文字入力・設定欄（マスの「真下」に配置。最初から出さず、選択時のみ表示） */
+    /* マスの真下に配置する外部コントロール（選択時のみ表示） */
     .cell-external-ui {
-        background: #f8f9fa;
-        padding: 5px;
-        border: 1px solid #ddd;
+        background: #fdfdfd;
+        padding: 6px;
+        border: 1px solid #ccc;
         border-top: none;
-        display: none; /* 最初は非表示 */
+        display: none;
         flex-direction: column;
-        gap: 3px;
+        gap: 5px;
         z-index: 30;
         position: absolute;
         top: 100%;
         left: 0;
         width: 100%;
         box-sizing: border-box;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        border-bottom-left-radius: 4px;
-        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
     }
     .cell-wrapper.selected .cell-external-ui {
-        display: flex; /* 選択時のみ表示 */
+        display: flex;
     }
+
+    /* モード切り替えタブ（文字入力 vs 画像編集） */
+    .mode-tab-row {
+        display: flex;
+        background: #e9ecef;
+        border-radius: 4px;
+        padding: 2px;
+        gap: 2px;
+    }
+    .mode-tab-btn {
+        flex: 1;
+        padding: 4px;
+        font-size: 0.75rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        border-radius: 3px;
+        font-weight: bold;
+        color: #555;
+    }
+    .mode-tab-btn.active {
+        background: #fff;
+        color: #007bff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .mode-content { display: none; }
+    .mode-content.active { display: flex; flex-direction: column; gap: 4px; }
+
     .cell-input-row {
         display: flex;
-        gap: 3px;
+        gap: 4px;
         width: 100%;
         justify-content: center;
         align-items: center;
@@ -131,16 +160,16 @@
         border: 1px solid #ccc;
         text-align: center;
         font-weight: bold;
-        padding: 3px;
+        padding: 4px;
         border-radius: 3px;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
     }
     .cell-size-input {
-        width: 40px;
+        width: 45px;
         background: white;
         color: #333;
         border: 1px solid #ccc;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         text-align: center;
         border-radius: 3px;
     }
@@ -148,22 +177,33 @@
         background: white;
         color: #333;
         border: 1px solid #ccc;
-        font-size: 0.7rem;
+        font-size: 0.75rem;
         border-radius: 3px;
-        padding: 2px;
+        padding: 3px;
     }
-    .cell-sub-btn {
-        padding: 2px 6px;
-        font-size: 0.7rem;
-        background: #6c757d;
+
+    /* 押しやすく改良されたコピペボタン群 */
+    .copypaste-row {
+        display: flex;
+        gap: 6px;
+        width: 100%;
+    }
+    .cell-big-btn {
+        flex: 1;
+        padding: 6px;
+        font-size: 0.8rem;
+        font-weight: bold;
         color: white;
         border: none;
-        border-radius: 3px;
+        border-radius: 4px;
         cursor: pointer;
     }
-    .cell-sub-btn.paste-btn { background: #28a745; }
+    .copy-btn { background: #6c757d; }
+    .copy-btn:hover { background: #5a6268; }
+    .paste-btn { background: #28a745; }
+    .paste-btn:hover { background: #218838; }
 
-    /* 枠なし・画像にかぶせるvs/＝オーバーレイ */
+    /* VS / ＝ オーバーレイ */
     .vs-float-overlay {
         position: absolute;
         display: none;
@@ -182,7 +222,7 @@
         cursor: text;
     }
 
-    /* モーダルウィンドウ */
+    /* モーダル */
     .modal-overlay {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
@@ -200,7 +240,7 @@
         max-width: 420px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         font-size: 0.9rem;
-        line-height: 1.5;
+        line-height: 1.6;
         max-height: 80vh;
         overflow-y: auto;
     }
@@ -210,20 +250,20 @@
         border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; font-weight: bold;
     }
 
-    #saveBtn { background: #28a745; color: white; padding: 12px 25px; border-radius: 50px; border: none; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 0.95rem; }
+    #saveBtn { background: #28a745; color: white; padding: 12px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
 </style>
 </head>
 <body>
 
-<h1>高画質コラージュ＆比較メーカー</h1>
+<h1>超高画質・コラージュ＆比較メーカー</h1>
 
 <div class="controls">
-    <button onclick="setLayout('3x3')">3x3</button>
-    <button onclick="setLayout('2x2')">2x2</button>
+    <button onclick="setLayout('3x3')">3x3 グリッド</button>
+    <button onclick="setLayout('2x2')">2x2 グリッド</button>
     <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択: OFF</button>
     <button id="modeSwapBtn" onclick="toggleSwapMode()">位置交換: OFF</button>
     <button class="help-btn" onclick="openHelpModal()">❓ 使い方</button>
-    <button onclick="location.reload()">リセット</button>
+    <button onclick="location.reload()" style="background:#dc3545; color:white;">リセット</button>
 </div>
 
 <div class="sub-controls">
@@ -238,17 +278,17 @@
             <option value="bottom">下部</option>
             <option value="middle">真ん中</option>
         </select>
-        <span style="margin-left:3px;">フォント:</span>
-        <select id="fontFamily" onchange="updateFontPreview()" style="padding:2px;">
+        <span style="margin-left:5px;">フォント:</span>
+        <select id="fontFamily" onchange="updateFontPreview()" style="padding:3px;">
             <option value="sans-serif">ゴシック</option>
             <option value="serif">明朝体</option>
             <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
             <option value="'Impact', 'Arial Black', sans-serif">レトロ太字</option>
         </select>
-        <span style="margin-left:3px;">全体サイズ:</span>
+        <span style="margin-left:5px;">全体サイズ:</span>
         <input type="number" id="globalTextSize" value="200" style="width:45px;" oninput="updateGlobalTextSize()">
-        <span style="margin-left:3px;">全体文字色:</span>
-        <select id="defaultTextColor" onchange="updateAllTextColors()" style="padding:2px;">
+        <span style="margin-left:5px;">全体文字色:</span>
+        <select id="defaultTextColor" onchange="updateAllTextColors()" style="padding:3px;">
             <option value="white">白</option>
             <option value="black">黒</option>
             <option value="red">赤</option>
@@ -261,36 +301,36 @@
             <option value="bottom">下部</option>
             <option value="middle">真ん中</option>
         </select>
-        <span style="margin-left:3px;">フォント:</span>
-        <select id="vsFontFamily" onchange="updateVsOverlays()" style="padding:2px;">
+        <span style="margin-left:5px;">フォント:</span>
+        <select id="vsFontFamily" onchange="updateVsOverlays()" style="padding:3px;">
             <option value="sans-serif">ゴシック</option>
             <option value="serif">明朝体</option>
             <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
             <option value="'Impact', 'Arial Black', sans-serif">レトロ太字</option>
         </select>
-        <span style="margin-left:3px;">vs色:</span>
-        <select id="vsColor" onchange="updateVsOverlays()" style="padding:2px;">
+        <span style="margin-left:5px;">vs色:</span>
+        <select id="vsColor" onchange="updateVsOverlays()" style="padding:3px;">
             <option value="white">白</option>
             <option value="yellow">黄</option>
             <option value="red">赤</option>
             <option value="black">黒</option>
         </select>
-        <span style="margin-left:3px;">＝色:</span>
-        <select id="eqColor" onchange="updateVsOverlays()" style="padding:2px;">
+        <span style="margin-left:5px;">＝色:</span>
+        <select id="eqColor" onchange="updateVsOverlays()" style="padding:3px;">
             <option value="white">白</option>
             <option value="yellow">黄</option>
             <option value="red">赤</option>
             <option value="black">黒</option>
         </select>
-        <span style="margin-left:3px;">vsサイズ:</span> <input type="number" id="vsSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
-        <span style="margin-left:3px;">＝サイズ:</span> <input type="number" id="eqSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
+        <span style="margin-left:5px;">vsサイズ:</span> <input type="number" id="vsSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
+        <span style="margin-left:5px;">＝サイズ:</span> <input type="number" id="eqSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
     </div>
     <div id="swapOptions" style="display:none;">
-        <label><input type="checkbox" id="swapTextAlso" checked> テキストも移動</label>
+        <label><input type="checkbox" id="swapTextAlso" checked> テキストも一緒に交換</label>
     </div>
 </div>
 
-<p style="font-size: 0.8rem; color: #666; text-align: center; margin-top:0;">📱 マスをタップすると、真下に入力欄やコピー・ペーストボタンが表示されます。</p>
+<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップすると真下に「文字入力モード」と「画像編集モード」の切り替えパネルが表示されます。</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
@@ -308,10 +348,10 @@
 <div class="modal-overlay" id="helpModal">
     <div class="modal-content">
         <h3>📖 使い方ガイド</h3>
-        <p><b>1. 入力欄について:</b><br>最初から入力欄は表示されません。マスをタップして選択すると、マスの真下に入力欄や操作パネルが現れます。</p>
-        <p><b>2. コピー＆ペースト機能:</b><br>コピーしたいマスの「コピー」ボタンを押すとメモリに記憶されます。別のマスの「ペースト」ボタンを押すと、そのマスのサイズや枠を変えずに正確に画像や設定が複製されます。</p>
-        <p><b>3. 画像のフィット調整:</b><br>画像は短い方の辺に合わせて美しくセル全体をカバーします。またドラッグやホイールで位置・ズームを自由に微調整できます。</p>
-        <p><b>4. 位置交換モード:</b><br>ONにすると勝手にオフにならず、連続して好きなマス同士を何度でも入れ替えられます。</p>
+        <p><b>1. モード切り替えタブ:</b><br>マスをタップすると真下に「文字入力」と「画像編集」のタブが表示されます。文字入力時は文字の編集、画像編集時はドラッグやホイールで画像の拡大・移動ができます。</p>
+        <p><b>2. コピー＆ペースト:</b><br>「コピー」ボタンで静かに記憶され、「ペースト」ボタンで別のマスに画像・ズーム・位置・文字・色などを完璧に複製できます（アラートは出ません）。</p>
+        <p><b>3. 画像のフィット調整:</b><br>画像はアスペクト比を維持しつつ、<b>短い方の辺</b>に合わせてセル全体を隙間なく美しくカバーします。</p>
+        <p><b>4. 下部文字の見切れ防止:</b><br>文字が下部にある場合でも見切れないよう十分な余白とシャドウ（枠）が常時保持されます。</p>
         <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
     </div>
 </div>
@@ -327,10 +367,10 @@
     let firstSwapIndex = null;
     let currentPattern = 'ranking';
     let targetIndexForSingle = 0;
-    let clipboardData = null; // コピー用メモリ
+    let clipboardData = null; // サイレントコピー用メモリ
 
     function getCellPx() {
-        return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
+        return window.innerWidth >= 600 ? 210 : (currentLayout === '3x3' ? 110 : 160);
     }
 
     function openHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
@@ -516,7 +556,7 @@
         btnGroup.appendChild(replaceBtn);
         cell.appendChild(btnGroup);
 
-        // 文字プレビュー（文字位置変更時も枠・シャドウが維持されるよう設計）
+        // 文字プレビュー（文字枠・シャドウ消失バグを完全防止）
         const textPreview = document.createElement('div');
         textPreview.className = `cell-text-preview pos-${currentPos}`;
         textPreview.textContent = cellsData[i].text;
@@ -539,9 +579,29 @@
 
         wrapper.appendChild(cell);
 
-        // マスの「真下（外部）」に配置される入力・設定UI（最初から出ず、選択時のみ）
+        // マスの真下に配置する外部コントロール UI
         const extUi = document.createElement('div');
         extUi.className = 'cell-external-ui';
+
+        // モード切り替えタブ（文字入力 vs 画像編集）
+        const tabRow = document.createElement('div');
+        tabRow.className = 'mode-tab-row';
+
+        const tabText = document.createElement('button');
+        tabText.className = 'mode-tab-btn active';
+        tabText.textContent = '文字入力モード';
+
+        const tabImage = document.createElement('button');
+        tabImage.className = 'mode-tab-btn';
+        tabImage.textContent = '画像編集モード';
+
+        tabRow.appendChild(tabText);
+        tabRow.appendChild(tabImage);
+        extUi.appendChild(tabRow);
+
+        // 文字入力パネル
+        const contentText = document.createElement('div');
+        contentText.className = 'mode-content active';
 
         const inputRow = document.createElement('div');
         inputRow.className = 'cell-input-row';
@@ -550,7 +610,7 @@
         textInput.type = 'text';
         textInput.className = 'cell-text-input';
         textInput.value = cellsData[i].text;
-        textInput.placeholder = '文字入力';
+        textInput.placeholder = 'ここに文字を入力';
         textInput.oninput = (e) => {
             cellsData[i].text = e.target.value;
             textPreview.textContent = e.target.value;
@@ -588,33 +648,37 @@
             updateTextShadow(textPreview, e.target.value);
         };
 
-        // コピー＆ペーストボタン
+        inputRow.appendChild(textInput);
+        inputRow.appendChild(sizeInput);
+        inputRow.appendChild(colorSelect);
+        contentText.appendChild(inputRow);
+        extUi.appendChild(contentText);
+
+        // 画像編集パネル（コピペボタン含む、押しやすく改良）
+        const contentImage = document.createElement('div');
+        contentImage.className = 'mode-content';
+
+        const cpRow = document.createElement('div');
+        cpRow.className = 'copypaste-row';
+
         const copyBtn = document.createElement('button');
-        copyBtn.className = 'cell-sub-btn';
-        copyBtn.textContent = 'コピー';
+        copyBtn.className = 'cell-big-btn copy-btn';
+        copyBtn.textContent = '📋 この画像をコピー';
         copyBtn.onclick = (e) => {
             e.stopPropagation();
-            if(!cellsData[i].img && !cellsData[i].text) {
-                alert('コピーする内容がありません');
-                return;
-            }
+            if(!cellsData[i].img && !cellsData[i].text) return;
             clipboardData = JSON.parse(JSON.stringify(cellsData[i]));
-            // canvas要素やimageオブジェクト自体はJSONに含まれないため個別に退避
             clipboardData.img = cellsData[i].img;
             clipboardData.canvas = cellsData[i].canvas;
-            alert(`マス ${i+1} の内容をコピーしました。他のマスの「ペースト」を押してください。`);
+            // サイレントコピー（アラート不要のご要望に合致）
         };
 
         const pasteBtn = document.createElement('button');
-        pasteBtn.className = 'cell-sub-btn paste-btn';
-        pasteBtn.textContent = 'ペースト';
+        pasteBtn.className = 'cell-big-btn paste-btn';
+        pasteBtn.textContent = '📥 ペースト（貼り付け）';
         pasteBtn.onclick = (e) => {
             e.stopPropagation();
-            if(!clipboardData) {
-                alert('先に「コピー」ボタンを押してください');
-                return;
-            }
-            // 枠のサイズや位置を変えずに、中身と設定のみ正確に貼り付け
+            if(!clipboardData) return;
             cellsData[i].img = clipboardData.img;
             cellsData[i].imgUrl = clipboardData.imgUrl;
             cellsData[i].x = clipboardData.x;
@@ -639,15 +703,28 @@
             createCells();
         };
 
-        inputRow.appendChild(textInput);
-        inputRow.appendChild(sizeInput);
-        inputRow.appendChild(colorSelect);
-        inputRow.appendChild(copyBtn);
-        inputRow.appendChild(pasteBtn);
+        cpRow.appendChild(copyBtn);
+        cpRow.appendChild(pasteBtn);
+        contentImage.appendChild(cpRow);
+        extUi.appendChild(contentImage);
 
-        extUi.appendChild(inputRow);
+        // タブ切り替えイベント
+        tabText.onclick = (e) => {
+            e.stopPropagation();
+            tabText.classList.add('active');
+            tabImage.classList.remove('active');
+            contentText.classList.add('active');
+            contentImage.classList.remove('active');
+        };
+        tabImage.onclick = (e) => {
+            e.stopPropagation();
+            tabImage.classList.add('active');
+            tabText.classList.remove('active');
+            contentImage.classList.add('active');
+            contentText.classList.remove('active');
+        };
+
         wrapper.appendChild(extUi);
-
         setupCell(wrapper, cell, i);
         grid.appendChild(wrapper);
     }
@@ -663,7 +740,6 @@
                 } else {
                     swapCells(firstSwapIndex, i);
                     firstSwapIndex = null;
-                    // ※位置交換モードは勝手にオフにならず、連続で入れ替え可能
                 }
                 return;
             }
@@ -682,7 +758,6 @@
                 return;
             }
 
-            // 単体選択（他の選択を外してこのマスだけ選択状態にし、真下に入力欄を表示）
             document.querySelectorAll('.cell-wrapper').forEach(w => w.classList.remove('selected'));
             wrapper.classList.add('selected');
         });
@@ -768,7 +843,6 @@
         }, {passive:false});
     }
 
-    // どこもない部分をクリックしたら選択解除
     document.addEventListener('click', () => {
         if(!isMultiSelectMode && !isSwapMode) {
             document.querySelectorAll('.cell-wrapper').forEach(w => w.classList.remove('selected'));
@@ -854,7 +928,7 @@
                 cellsData[i].img = img;
                 cellsData[i].imgUrl = imgUrl;
                 
-                // 短い方の辺に合わせてセル全体を綺麗にカバーする初期スケール計算
+                // 「短い方の辺に合わせてセル全体をカバーする」正しいスケール計算
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
@@ -913,8 +987,8 @@
             vsDiv.style.display = 'flex';
             eqDiv.style.display = 'flex';
 
-            const vsSize = CELL_PX * 0.4 * vsScale;
-            const eqSize = CELL_PX * 0.4 * eqScale;
+            const vsSize = CELL_PX * 0.45 * vsScale;
+            const eqSize = CELL_PX * 0.45 * eqScale;
 
             vsDiv.style.width = vsSize + 'px';
             vsDiv.style.height = vsSize + 'px';
@@ -930,7 +1004,7 @@
             const eqInput = eqDiv.querySelector('input');
             vsInput.style.fontFamily = vsFont;
             eqInput.style.fontFamily = vsFont;
-            vsInput.style.fontSize = (vsSize * 0.7) + 'px';
+            vsInput.style.fontSize = (vsSize * 0.75) + 'px';
             vsInput.style.color = vsCol;
 
             vsInput.style.textShadow = (vsCol === 'black') 
@@ -997,7 +1071,7 @@
                     ctx.strokeStyle = '#000000';
                 }
 
-                ctx.lineWidth = Math.max(4, fontSize * 0.12);
+                ctx.lineWidth = Math.max(5, fontSize * 0.14);
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
@@ -1006,7 +1080,8 @@
                 const textPos = (currentPattern === 'vs') ? vsPos : rankPos;
 
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.25) : (destY + outputCellSize / 2);
+                // 見切れ防止のマージンを考慮した高解像度描画位置
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.35) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
@@ -1029,7 +1104,7 @@
                 const eqInput = document.getElementById(`eq-${r}`).querySelector('input').value;
 
                 if(vsInput) {
-                    const vsFontSize = outputCellSize * 0.25 * vsScale;
+                    const vsFontSize = outputCellSize * 0.3 * vsScale;
                     ctx.font = 'bold ' + vsFontSize + 'px ' + vsFont;
                     const x = 1 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
@@ -1042,7 +1117,7 @@
                 }
 
                 if(eqInput) {
-                    const eqFontSize = outputCellSize * 0.25 * eqScale;
+                    const eqFontSize = outputCellSize * 0.3 * eqScale;
                     ctx.font = 'bold ' + eqFontSize + 'px ' + vsFont;
                     const x = 2 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
