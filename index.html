@@ -1,7 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>超高画質・完全フチなし正方形コラージュ (スマホ完全対応)</title>
+<style>
+    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; touch-action: manipulation; }
+    .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
+    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; }
+    .grid { display: grid; gap: 0px; }
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
+    .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
+    @media (min-width: 600px) {
+        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
+        .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
+    }
+    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; }
+    .cell.dragging { cursor: grabbing; }
+    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
+    #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>高画質・隙間なしコラージュメーカー</h1>
+<div class="controls">
+    <button onclick="setLayout('3x3')">3x3</button>
+    <button onclick="setLayout('2x2')">2x2</button>
+    <button onclick="location.reload()">リセット</button>
+</div>
+<p style="font-size: 0.85rem; color: #666; text-align: center;">📱 1本指で移動 / 2本指でピンチイン・アウト(拡大縮小)</p>
+
+<div id="editor-container">
+    <div id="grid" class="grid layout-3x3"></div>
+</div>
+<button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
+
 <script>
     let currentLayout = '3x3';
     let cellsData = [];
-    const CELL_PX = 200; // プレビュー時の1マスサイズ
+    
+    // 画面幅に応じてプレビューの1マスサイズを動的に変更
+    function getCellPx() {
+        return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
+    }
 
     function setLayout(type) {
         currentLayout = type;
@@ -25,6 +69,8 @@
     }
 
     function setupCell(cell, i) {
+        const CELL_PX = getCellPx();
+
         cell.addEventListener('click', (e) => {
             if(cellsData[i].img) return;
             const input = document.createElement('input');
@@ -37,13 +83,14 @@
         
         let isDrag = false;
         let startX = 0, startY = 0;
+        let initialPinchDist = null;
+        let initialScale = 1;
 
         // --- マウス操作 ---
         cell.addEventListener('mousedown', (e) => {
             if(!cellsData[i].img) return;
             isDrag = true;
-            startX = e.clientX;
-            startY = e.clientY;
+            startX = e.clientX; startY = e.clientY;
             cell.classList.add('dragging');
         });
         window.addEventListener('mousemove', (e) => {
@@ -51,50 +98,75 @@
             const d = cellsData[i];
             d.x += e.clientX - startX;
             d.y += e.clientY - startY;
-            startX = e.clientX;
-            startY = e.clientY;
-            applyConstraint(d, CELL_PX);
+            startX = e.clientX; startY = e.clientY;
+            applyConstraint(d, getCellPx());
             draw(i);
         });
         window.addEventListener('mouseup', () => { isDrag = false; cell.classList.remove('dragging'); });
 
-        // --- スマホタッチ操作 ---
+        // --- スマホタッチ操作 (1本指移動 ＆ 2本指ピンチイン・アウト) ---
         cell.addEventListener('touchstart', (e) => {
-            if(!cellsData[i].img || e.touches.length !== 1) return;
-            isDrag = true;
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            cell.classList.add('dragging');
+            if(!cellsData[i].img) return;
+            if(e.touches.length === 1) {
+                isDrag = true;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                initialPinchDist = null;
+            } else if(e.touches.length === 2) {
+                isDrag = false;
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                initialScale = cellsData[i].scale;
+            }
         }, {passive: true});
 
-        window.addEventListener('touchmove', (e) => {
-            if(!isDrag || !cellsData[i].img || e.touches.length !== 1) return;
+        cell.addEventListener('touchmove', (e) => {
+            if(!cellsData[i].img) return;
             const d = cellsData[i];
-            const currentX = e.touches[0].clientX;
-            const currentY = e.touches[0].clientY;
-            d.x += currentX - startX;
-            d.y += currentY - startY;
-            startX = currentX;
-            startY = currentY;
-            applyConstraint(d, CELL_PX);
-            draw(i);
+            const CELL_PX = getCellPx();
+
+            if(e.touches.length === 1 && isDrag) {
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                d.x += currentX - startX;
+                d.y += currentY - startY;
+                startX = currentX;
+                startY = currentY;
+                applyConstraint(d, CELL_PX);
+                draw(i);
+            } else if(e.touches.length === 2 && initialPinchDist !== null) {
+                const currentPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const factor = currentPinchDist / initialPinchDist;
+                d.scale = initialScale * factor;
+                applyConstraint(d, CELL_PX);
+                draw(i);
+            }
         }, {passive: true});
 
-        window.addEventListener('touchend', () => { isDrag = false; cell.classList.remove('dragging'); });
+        cell.addEventListener('touchend', (e) => {
+            if(e.touches.length < 2) initialPinchDist = null;
+            if(e.touches.length === 0) isDrag = false;
+        });
         
-        // ホイールで拡大縮小（PC用）
+        // PC用ホイール拡大縮小
         cell.addEventListener('wheel', (e) => {
             if(!cellsData[i].img) return;
             e.preventDefault();
             const d = cellsData[i];
             const factor = e.deltaY < 0 ? 1.1 : 0.9;
             d.scale *= factor;
-            applyConstraint(d, CELL_PX);
+            applyConstraint(d, getCellPx());
             draw(i);
         }, {passive:false});
     }
 
     function loadImage(file, i, cell) {
+        const CELL_PX = getCellPx();
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
@@ -145,6 +217,7 @@
             if(!d.img) return;
             const x = (i % count) * size;
             const y = Math.floor(i / count) * size;
+            const CELL_PX = getCellPx();
             const ratio = size / CELL_PX;
             ctx.drawImage(d.img, d.x * ratio, d.y * ratio, d.img.width * d.scale * ratio, d.img.height * d.scale * ratio, x, y, size, size);
         });
@@ -156,3 +229,5 @@
 
     createCells();
 </script>
+</body>
+</html>
