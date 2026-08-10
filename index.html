@@ -15,11 +15,11 @@
     #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; }
     .grid { display: grid; gap: 0px; }
     
-    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px) 40px 40px; grid-template-rows: repeat(3, 100px); }
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
     .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
     
     @media (min-width: 600px) {
-        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px) 80px 80px; grid-template-rows: repeat(3, 200px); }
+        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
         .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
     }
 
@@ -29,7 +29,6 @@
     .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
-    /* マスごとの個別画像変更ボタン（右上） */
     .cell-replace-btn {
         position: absolute;
         top: 4px;
@@ -102,20 +101,24 @@
     .cell-text-preview.pos-bottom { bottom: 12px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
-    .vs-overlay {
+    /* 枠なし・画像にかぶせるvs/＝オーバーレイ */
+    .vs-float-overlay {
+        position: absolute;
         display: none;
         justify-content: center;
         align-items: center;
-        z-index: 20;
+        z-index: 35;
+        pointer-events: auto;
     }
-    .vs-overlay input {
+    .vs-float-overlay input {
         background: transparent;
         border: none;
-        color: #333;
+        color: #fff;
         text-align: center;
         font-weight: bold;
         width: 100%;
-        text-shadow: 1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff;
+        text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 8px rgba(0,0,0,0.8);
+        cursor: text;
     }
 
     #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
@@ -171,6 +174,13 @@
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
+    <!-- 枠なし・浮動vs/＝（3行×2列分 = 計6箇所） -->
+    <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs" data-type="vs"></div>
+    <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝" data-type="eq"></div>
+    <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs" data-type="vs"></div>
+    <div class="vs-float-overlay" id="eq-1"><input type="text" value="＝" data-type="eq"></div>
+    <div class="vs-float-overlay" id="vs-2"><input type="text" value="vs" data-type="vs"></div>
+    <div class="vs-float-overlay" id="eq-2"><input type="text" value="＝" data-type="eq"></div>
 </div>
 
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
@@ -196,7 +206,7 @@
         select.style.fontFamily = select.value;
         const font = select.value;
         document.querySelectorAll('.cell-text-preview').forEach(p => { p.style.fontFamily = font; });
-        document.querySelectorAll('.vs-overlay input').forEach(input => { input.style.fontFamily = font; });
+        document.querySelectorAll('.vs-float-overlay input').forEach(input => { input.style.fontFamily = font; });
     }
 
     function updateContainerBackground() {
@@ -282,29 +292,8 @@
         const bg = document.getElementById('bgColorSelect').value;
         const currentPos = document.getElementById('textPosition').value;
 
-        if (currentLayout === '3x3' && currentPattern === 'vs') {
-            let cellIdx = 0;
-            for(let i=0; i<15; i++) {
-                const col = i % 5;
-                if(col < 3) {
-                    const idx = cellIdx++;
-                    buildCellElement(grid, idx, oldData, bg, currentPos);
-                } else if(col === 3) {
-                    const vsDiv = document.createElement('div');
-                    vsDiv.className = 'vs-overlay';
-                    vsDiv.innerHTML = `<input type="text" value="vs" data-type="vs">`;
-                    grid.appendChild(vsDiv);
-                } else if(col === 4) {
-                    const eqDiv = document.createElement('div');
-                    eqDiv.className = 'vs-overlay';
-                    eqDiv.innerHTML = `<input type="text" value="＝" data-type="eq">`;
-                    grid.appendChild(eqDiv);
-                }
-            }
-        } else {
-            for(let i=0; i<count; i++) {
-                buildCellElement(grid, i, oldData, bg, currentPos);
-            }
+        for(let i=0; i<count; i++) {
+            buildCellElement(grid, i, oldData, bg, currentPos);
         }
         updateFontPreview();
         updateContainerBackground();
@@ -329,7 +318,6 @@
         if(cellsData[i].img) placeholder.style.display = 'none';
         cell.appendChild(placeholder);
 
-        // 画像入れ直しボタン（個別）
         const replaceBtn = document.createElement('button');
         replaceBtn.className = 'cell-replace-btn';
         replaceBtn.textContent = cellsData[i].img ? '画像変更' : '画像選択';
@@ -393,7 +381,6 @@
     }
 
     function setupCell(cell, i) {
-        // マスをタップした時は「文字入力欄の開閉」のみ行う（画像選択とは完全に分離）
         cell.addEventListener('click', (e) => {
             if(isSwapMode) {
                 if(firstSwapIndex === null) {
@@ -617,27 +604,56 @@
     }
 
     function updateVsOverlays() {
-        const overlays = document.querySelectorAll('.vs-overlay');
+        const CELL_PX = getCellPx();
         const show = (currentPattern === 'vs' && currentLayout === '3x3');
-        overlays.forEach(div => {
-            div.style.display = show ? 'flex' : 'none';
-            const input = div.querySelector('input');
-            const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
-            const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
-            const isVs = input.dataset.type === 'vs';
-            input.style.fontSize = (isVs ? (1 * vsScale) : (1 * eqScale)) + 'rem';
-        });
+        const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
+        const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
+
+        for(let r=0; r<3; r++) {
+            const vsDiv = document.getElementById(`vs-${r}`);
+            const eqDiv = document.getElementById(`eq-${r}`);
+
+            if(!show) {
+                vsDiv.style.display = 'none';
+                eqDiv.style.display = 'none';
+                continue;
+            }
+
+            vsDiv.style.display = 'flex';
+            eqDiv.style.display = 'flex';
+
+            // 各要素のサイズと位置を動的に計算（右列と真ん中列の間=vs、真ん中列と左列の間=eq）
+            // 3x3グリッドの並び: [0:左, 1:真ん中, 2:右] (インデックス順)
+            // 右(2)と真ん中(1)の境界 = 左から 2 * CELL_PX
+            // 真ん中(1)と左(0)の境界 = 左から 1 * CELL_PX
+            const vsSize = CELL_PX * 0.4 * vsScale;
+            const eqSize = CELL_PX * 0.4 * eqScale;
+
+            vsDiv.style.width = vsSize + 'px';
+            vsDiv.style.height = vsSize + 'px';
+            vsDiv.style.left = (2 * CELL_PX - vsSize / 2) + 'px';
+            vsDiv.style.top = (r * CELL_PX + (CELL_PX - vsSize) / 2) + 'px';
+
+            eqDiv.style.width = eqSize + 'px';
+            eqDiv.style.height = eqSize + 'px';
+            eqDiv.style.left = (1 * CELL_PX - eqSize / 2) + 'px';
+            eqDiv.style.top = (r * CELL_PX + (CELL_PX - eqSize) / 2) + 'px';
+
+            const vsInput = vsDiv.querySelector('input');
+            const eqInput = eqDiv.querySelector('input');
+            vsInput.style.fontSize = (vsSize * 0.7) + 'px';
+            eqInput.style.fontSize = (eqSize * 0.7) + 'px';
+        }
         updateFontPreview();
     }
 
     function generateHighResImage() {
         const outputCellSize = 1500;
-        const count = currentLayout === '3x3' ? 3 : 2;
-        const vsSpace = (currentPattern === 'vs' && currentLayout === '3x3') ? 200 : 0;
+        const count = 3;
         const bgCol = document.getElementById('bgColorSelect').value;
         
         const canvas = document.createElement('canvas');
-        canvas.width = (outputCellSize * count) + (vsSpace * (count - 1));
+        canvas.width = outputCellSize * count;
         canvas.height = outputCellSize * count;
         const ctx = canvas.getContext('2d');
         
@@ -648,10 +664,12 @@
         const scaleRatio = outputCellSize / CELL_PX;
         const selectedFont = document.getElementById('fontFamily').value;
 
+        // 1. 各マスの画像とランキングテキストを描画
         cellsData.forEach((d, i) => {
+            if(currentLayout !== '3x3' && i >= 4) return;
             const destCol = i % count;
             const destRow = Math.floor(i / count);
-            const destX = (destCol * outputCellSize) + (destCol * vsSpace);
+            const destX = destCol * outputCellSize;
             const destY = destRow * outputCellSize;
 
             if(d.img) {
@@ -690,31 +708,46 @@
             }
         });
 
+        // 2. VSモード時の「vs」と「＝」文字の描画（枠なし・画像にかぶせる）
         if(currentPattern === 'vs' && currentLayout === '3x3') {
-            const inputs = document.querySelectorAll('.vs-overlay input');
             const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
             const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
             
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
-            inputs.forEach((input, idx) => {
-                const row = Math.floor(idx / 2);
-                const isVs = (idx % 2 === 0);
-                const destCol = isVs ? 1 : 2;
-                const destX = (destCol * outputCellSize) + ((destCol - 1) * vsSpace) + (vsSpace / 2);
-                const destY = (row * outputCellSize) + (outputCellSize / 2);
+            for(let r=0; r<3; r++) {
+                const vsInput = document.getElementById(`vs-${r}`).querySelector('input').value;
+                const eqInput = document.getElementById(`eq-${r}`).querySelector('input').value;
 
-                const currentFontSize = (outputCellSize * 0.12) * (isVs ? vsScale : eqScale);
-                ctx.font = 'bold ' + currentFontSize + 'px ' + selectedFont;
-                
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = Math.max(6, currentFontSize * 0.15);
-                ctx.strokeText(input.value, destX, destY);
+                // 右列と真ん中列の間 (x = 2 * outputCellSize)
+                if(vsInput) {
+                    const vsFontSize = outputCellSize * 0.25 * vsScale;
+                    ctx.font = 'bold ' + vsFontSize + 'px ' + selectedFont;
+                    const x = 2 * outputCellSize;
+                    const y = (r * outputCellSize) + (outputCellSize / 2);
 
-                ctx.fillStyle = '#333333';
-                ctx.fillText(input.value, destX, destY);
-            });
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = Math.max(6, vsFontSize * 0.15);
+                    ctx.strokeText(vsInput, x, y);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(vsInput, x, y);
+                }
+
+                // 真ん中列と左列の間 (x = 1 * outputCellSize)
+                if(eqInput) {
+                    const eqFontSize = outputCellSize * 0.25 * eqScale;
+                    ctx.font = 'bold ' + eqFontSize + 'px ' + selectedFont;
+                    const x = 1 * outputCellSize;
+                    const y = (r * outputCellSize) + (outputCellSize / 2);
+
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = Math.max(6, eqFontSize * 0.15);
+                    ctx.strokeText(eqInput, x, y);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(eqInput, x, y);
+                }
+            }
         }
 
         const link = document.createElement('a');
