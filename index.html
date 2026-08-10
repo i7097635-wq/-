@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>高画質・フチなし正方形コラージュ </title>
+<title>高画質・完全フチなし正方形コラージュ </title>
 <style>
     body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; touch-action: manipulation; }
     .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
@@ -25,13 +25,13 @@
 </head>
 <body>
 
-<h1>高画質・隙間なしコラージュメーカー</h1>
+<h1>隙間なしコラージュメーカー</h1>
 <div class="controls">
     <button onclick="setLayout('3x3')">3x3</button>
     <button onclick="setLayout('2x2')">2x2</button>
     <button onclick="location.reload()">リセット</button>
 </div>
-<p style="font-size: 0.85rem; color: #666; text-align: center;"> 1本指で移動 / 2本指でピンチイン・アウト(拡大縮小)</p>
+<p style="font-size: 0.85rem; color: #666; text-align: center;">📱 1本指で移動 / 2本指でピンチイン・アウト(拡大縮小)</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
@@ -42,7 +42,6 @@
     let currentLayout = '3x3';
     let cellsData = [];
     
-    // 画面幅に応じてプレビューの1マスサイズを動的に変更
     function getCellPx() {
         return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
     }
@@ -69,8 +68,6 @@
     }
 
     function setupCell(cell, i) {
-        const CELL_PX = getCellPx();
-
         cell.addEventListener('click', (e) => {
             if(cellsData[i].img) return;
             const input = document.createElement('input');
@@ -86,7 +83,6 @@
         let initialPinchDist = null;
         let initialScale = 1;
 
-        // --- マウス操作 ---
         cell.addEventListener('mousedown', (e) => {
             if(!cellsData[i].img) return;
             isDrag = true;
@@ -104,7 +100,6 @@
         });
         window.addEventListener('mouseup', () => { isDrag = false; cell.classList.remove('dragging'); });
 
-        // --- スマホタッチ操作 (1本指移動 ＆ 2本指ピンチイン・アウト) ---
         cell.addEventListener('touchstart', (e) => {
             if(!cellsData[i].img) return;
             if(e.touches.length === 1) {
@@ -153,7 +148,6 @@
             if(e.touches.length === 0) isDrag = false;
         });
         
-        // PC用ホイール拡大縮小
         cell.addEventListener('wheel', (e) => {
             if(!cellsData[i].img) return;
             e.preventDefault();
@@ -206,28 +200,51 @@
         d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
     }
 
+    // --- 正しい比率を維持した高画質出力処理 ---
     function generateHighResImage() {
-        const size = 1500;
-        const canvas = document.createElement('canvas');
+        const outputCellSize = 1500; // 1マスあたりの高画質解像度
         const count = currentLayout === '3x3' ? 3 : 2;
-        canvas.width = canvas.height = size * count;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = outputCellSize * count;
         const ctx = canvas.getContext('2d');
         
+        const CELL_PX = getCellPx();
+
         cellsData.forEach((d, i) => {
-            if(!d.img) return;
-            const x = (i % count) * size;
-            const y = Math.floor(i / count) * size;
-            const CELL_PX = getCellPx();
-            const ratio = size / CELL_PX;
-            ctx.drawImage(d.img, d.x * ratio, d.y * ratio, d.img.width * d.scale * ratio, d.img.height * d.scale * ratio, x, y, size, size);
+            const destCol = i % count;
+            const destRow = Math.floor(i / count);
+            const destX = destCol * outputCellSize;
+            const destY = destRow * outputCellSize;
+
+            if(!d.img) {
+                // 画像がないマスは白で埋める
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
+                return;
+            }
+
+            // プレビュー画面での配置（x, y, scale）を、高画質サイズ（outputCellSize）へ正確に換算する
+            const scaleRatio = outputCellSize / CELL_PX;
+
+            ctx.save();
+            // 各マスごとにクリッピング（はみ出さないようにする）
+            ctx.beginPath();
+            ctx.rect(destX, destY, outputCellSize, outputCellSize);
+            ctx.clip();
+
+            // ユーザーが調整した位置と拡大率をそのまま高画質キャンバスに適用
+            ctx.translate(destX + (d.x * scaleRatio), destY + (d.y * scaleRatio));
+            ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
+
+            ctx.drawImage(d.img, 0, 0);
+            ctx.restore();
         });
+
         const link = document.createElement('a');
-        link.download = 'collage.png';
-        link.href = canvas.toDataURL();
+        link.download = `collage_${currentLayout}_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png', 1.0);
         link.click();
     }
-
-    createCells();
 </script>
 </body>
 </html>
