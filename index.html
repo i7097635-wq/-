@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>強さ比べ便利ツール</title>
+<title>超高画質・完全フチなしコラージュ＆比較メーカー</title>
 <style>
     body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
     .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
@@ -12,7 +12,7 @@
     
     .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
-    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; position: relative; }
+    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; }
     .grid { display: grid; gap: 0px; }
     .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
     .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
@@ -20,13 +20,13 @@
         .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
         .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
     }
-    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; border: 1px solid #bbb; }
+    .cell { background-color: #fff; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; border: 1px solid #bbb; }
     .cell.selected { border: 3px solid #ff4757; }
     .cell.dragging { cursor: grabbing; }
     .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
-    /* 入力UIはデフォルト非表示、アクティブ（タップ中・ホバー中）の時だけフワッと表示 */
+    /* 入力UIコンテナ（普段は非表示） */
     .cell-ui-container {
         position: absolute;
         left: 50%;
@@ -35,9 +35,9 @@
         display: none;
         flex-direction: column;
         gap: 2px;
-        z-index: 10;
+        z-index: 30;
         align-items: center;
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.9);
         padding: 4px;
         border-radius: 4px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
@@ -68,6 +68,24 @@
         border-radius: 3px;
     }
 
+    /* 画面上のライブ文字プレビュー（完成時と同じ見た目） */
+    .cell-text-preview {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+        color: white;
+        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+    }
+    .cell-text-preview.pos-bottom { bottom: 8px; }
+    .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
+
+    /* vs と ＝ のオーバーレイ */
     .vs-overlay {
         display: none;
         position: absolute;
@@ -92,7 +110,7 @@
 </head>
 <body>
 
-<h1>強さ比べ便利ツール</h1>
+<h1>高画質コラージュ＆比較メーカー</h1>
 
 <div class="controls">
     <button onclick="setLayout('3x3')">3x3</button>
@@ -119,7 +137,12 @@
             <option value="sans-serif" style="font-family: sans-serif;">ゴシック</option>
             <option value="serif" style="font-family: serif;">明朝体</option>
             <option value="'Rounded Mplus 1c', sans-serif" style="font-family: 'Rounded Mplus 1c', sans-serif;">丸ゴシック</option>
-            <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">レトロ</option>
+            <option value="'Impact', 'Arial Black', sans-serif" style="font-family: 'Impact', sans-serif;">レトロ太字</option>
+        </select>
+        <span style="margin-left:5px;">背景:</span>
+        <select id="bgColorSelect" onchange="updateContainerBackground()">
+            <option value="#fff">白</option>
+            <option value="#000">黒</option>
         </select>
     </div>
     <div id="vsOptions" style="display:none;">
@@ -131,7 +154,7 @@
     </div>
 </div>
 
-<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 1本指移動 / 2本指ピンチイン・アウト (マスをタップで文字入力表示)</p>
+<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 1本指移動 / 2本指ピンチイン・アウト (マスをタップで文字入力)</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
@@ -158,6 +181,21 @@
     function updateFontPreview() {
         const select = document.getElementById('fontFamily');
         select.style.fontFamily = select.value;
+        const font = select.value;
+        document.querySelectorAll('.cell-text-preview').forEach(p => {
+            p.style.fontFamily = font;
+        });
+        document.querySelectorAll('.vs-overlay input').forEach(input => {
+            input.style.fontFamily = font;
+        });
+    }
+
+    function updateContainerBackground() {
+        const bg = document.getElementById('bgColorSelect').value;
+        document.getElementById('editor-container').style.backgroundColor = bg;
+        document.querySelectorAll('.cell').forEach(c => {
+            if(!c.querySelector('canvas')) c.style.backgroundColor = bg;
+        });
     }
 
     function setLayout(type) {
@@ -205,6 +243,10 @@
         document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
         document.getElementById('rankOptions').style.display = pattern === 'ranking' ? 'inline-block' : 'none';
         document.getElementById('vsOptions').style.display = pattern === 'vs' ? 'inline-block' : 'none';
+        
+        document.querySelectorAll('.cell-text-preview').forEach(p => {
+            p.style.display = (pattern === 'ranking') ? 'block' : 'none';
+        });
         updateVsOverlays();
     }
 
@@ -212,6 +254,9 @@
         const pos = document.getElementById('textPosition').value;
         document.querySelectorAll('.cell-ui-container').forEach(el => {
             el.className = `cell-ui-container pos-${pos}`;
+        });
+        document.querySelectorAll('.cell-text-preview').forEach(p => {
+            p.className = `cell-text-preview pos-${pos}`;
         });
     }
 
@@ -224,6 +269,8 @@
         cellsData = [];
         selectedIndices = [];
 
+        const bg = document.getElementById('bgColorSelect').value;
+
         for(let i=0; i<count; i++) {
             if(oldData[i]) {
                 cellsData[i] = oldData[i];
@@ -234,6 +281,7 @@
             
             const cell = document.createElement('div');
             cell.className = 'cell';
+            if(!cellsData[i].img) cell.style.backgroundColor = bg;
             
             const placeholder = document.createElement('div');
             placeholder.className = 'placeholder';
@@ -241,15 +289,28 @@
             if(cellsData[i].img) placeholder.style.display = 'none';
             cell.appendChild(placeholder);
 
+            const currentPos = document.getElementById('textPosition').value;
+
+            // ライブプレビュー用要素
+            const textPreview = document.createElement('div');
+            textPreview.className = `cell-text-preview pos-${currentPos}`;
+            textPreview.textContent = cellsData[i].text;
+            textPreview.style.display = (currentPattern === 'ranking' && cellsData[i].text) ? 'block' : 'none';
+            cell.appendChild(textPreview);
+
             const uiContainer = document.createElement('div');
-            uiContainer.className = `cell-ui-container pos-${document.getElementById('textPosition').value}`;
+            uiContainer.className = `cell-ui-container pos-${currentPos}`;
 
             const textInput = document.createElement('input');
             textInput.type = 'text';
             textInput.className = 'cell-text-input';
             textInput.value = cellsData[i].text;
             textInput.placeholder = '文字入力';
-            textInput.oninput = (e) => { cellsData[i].text = e.target.value; };
+            textInput.oninput = (e) => {
+                cellsData[i].text = e.target.value;
+                textPreview.textContent = e.target.value;
+                textPreview.style.display = (e.target.value && currentPattern === 'ranking') ? 'block' : 'none';
+            };
             textInput.addEventListener('click', (e) => e.stopPropagation());
 
             const sizeInput = document.createElement('input');
@@ -257,7 +318,12 @@
             sizeInput.className = 'cell-size-input';
             sizeInput.value = cellsData[i].textSize !== '' ? cellsData[i].textSize : '';
             sizeInput.placeholder = '自動';
-            sizeInput.oninput = (e) => { cellsData[i].textSize = e.target.value; };
+            sizeInput.oninput = (e) => {
+                cellsData[i].textSize = e.target.value;
+                const basePx = getCellPx();
+                const fontSize = (e.target.value !== '' && !isNaN(e.target.value)) ? (Number(e.target.value) * (basePx / 1500)) : (basePx * 0.08);
+                textPreview.style.fontSize = fontSize + 'px';
+            };
             sizeInput.addEventListener('click', (e) => e.stopPropagation());
 
             uiContainer.appendChild(textInput);
@@ -274,6 +340,7 @@
         }
         setupVsOverlays();
         updateFontPreview();
+        updateContainerBackground();
     }
 
     function setupCell(cell, i) {
@@ -310,7 +377,6 @@
                 selectedIndices = [i];
                 triggerMultiFileSelect();
             } else if(currentPattern === 'ranking') {
-                // タップで入力UIの表示/非表示を切り替え
                 document.querySelectorAll('.cell').forEach(c => { if(c !== cell) c.classList.remove('active-input'); });
                 cell.classList.toggle('active-input');
             }
@@ -452,6 +518,7 @@
     function loadImage(file, i) {
         const CELL_PX = getCellPx();
         const cell = document.getElementById('grid').children[i];
+        cell.style.backgroundColor = '';
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
@@ -498,23 +565,27 @@
         if(currentLayout !== '3x3') return;
 
         for(let row=0; row<3; row++) {
+            // 左列と真ん中列の間 = vs
             const vsDiv = document.createElement('div');
             vsDiv.className = 'vs-overlay';
             vsDiv.innerHTML = `<input type="text" value="vs" data-row="${row}" data-type="vs">`;
             container.appendChild(vsDiv);
 
+            // 真ん中列と右列の間 = ＝
             const eqDiv = document.createElement('div');
             eqDiv.className = 'vs-overlay';
             eqDiv.innerHTML = `<input type="text" value="＝" data-row="${row}" data-type="eq">`;
             container.appendChild(eqDiv);
         }
         updateVsOverlays();
+        updateFontPreview();
     }
 
     function updateVsOverlays() {
         const overlays = document.querySelectorAll('.vs-overlay');
         const show = (currentPattern === 'vs' && currentLayout === '3x3');
         const CELL_PX = getCellPx();
+        const vsSpace = 40; // 隙間の幅
 
         overlays.forEach((div, idx) => {
             div.style.display = show ? 'flex' : 'none';
@@ -522,13 +593,11 @@
             const row = Math.floor(idx / 2);
             const isVs = (idx % 2 === 0);
             
-            const width = 40;
-            const height = CELL_PX;
-            let left = isVs ? (CELL_PX * 1.5 - width / 2) : (CELL_PX * 2.5 - width / 2);
+            let left = isVs ? (CELL_PX + (CELL_PX - vsSpace)/2) : (CELL_PX * 2 + (CELL_PX - vsSpace)/2);
             let top = row * CELL_PX;
 
-            div.style.width = width + 'px';
-            div.style.height = height + 'px';
+            div.style.width = vsSpace + 'px';
+            div.style.height = CELL_PX + 'px';
             div.style.left = left + 'px';
             div.style.top = top + 'px';
 
@@ -542,14 +611,15 @@
     function generateHighResImage() {
         const outputCellSize = 1500;
         const count = currentLayout === '3x3' ? 3 : 2;
-        const vsSpace = (currentPattern === 'vs' && currentLayout === '3x3') ? 120 : 0;
+        const vsSpace = (currentPattern === 'vs' && currentLayout === '3x3') ? 200 : 0;
+        const bgCol = document.getElementById('bgColorSelect').value;
         
         const canvas = document.createElement('canvas');
         canvas.width = (outputCellSize * count) + (vsSpace * (count - 1));
         canvas.height = outputCellSize * count;
         const ctx = canvas.getContext('2d');
         
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = bgCol;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const CELL_PX = getCellPx();
@@ -573,7 +643,7 @@
                 ctx.drawImage(d.img, 0, 0);
                 ctx.restore();
             } else {
-                ctx.fillStyle = '#e0e0e0';
+                ctx.fillStyle = bgCol;
                 ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
             }
 
@@ -589,7 +659,7 @@
 
                 const textPos = document.getElementById('textPosition').value;
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 0.8) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
@@ -609,7 +679,7 @@
                 const row = Math.floor(idx / 2);
                 const isVs = (idx % 2 === 0);
                 const destCol = isVs ? 1 : 2;
-                const destX = (destCol * outputCellSize) + ((destCol - 1) * vsSpace) - (vsSpace / 2);
+                const destX = (destCol * outputCellSize) + ((destCol - 1) * vsSpace) + (vsSpace / 2);
                 const destY = (row * outputCellSize) + (outputCellSize / 2);
 
                 const currentFontSize = (outputCellSize * 0.12) * (isVs ? vsScale : eqScale);
