@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>高画質・完全フチなし正方形コラージュ </title>
+<title>フチなし正方形コラージュメーカー</title>
 <style>
-    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; touch-action: manipulation; }
+    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
     .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
     button { padding: 8px 16px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
     #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; }
@@ -16,9 +16,9 @@
         .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
         .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
     }
-    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; }
+    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; /* スマホで勝手にスクロールするのを防ぐ最重要設定 */ }
     .cell.dragging { cursor: grabbing; }
-    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
 </style>
@@ -60,7 +60,7 @@
         for(let i=0; i<count; i++) {
             const cell = document.createElement('div');
             cell.className = 'cell';
-            cell.innerHTML = '<div class="placeholder">+</div>';
+            cell.innerHTML = `<div class="placeholder">+</div>`;
             cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null };
             setupCell(cell, i);
             grid.appendChild(cell);
@@ -94,7 +94,8 @@
             const d = cellsData[i];
             d.x += e.clientX - startX;
             d.y += e.clientY - startY;
-            startX = e.clientX; startY = e.clientY;
+            startX = e.clientX;
+            startY = e.clientY;
             applyConstraint(d, getCellPx());
             draw(i);
         });
@@ -200,9 +201,8 @@
         d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
     }
 
-    // --- 正しい比率を維持した高画質出力処理 ---
     function generateHighResImage() {
-        const outputCellSize = 1500; // 1マスあたりの高画質解像度
+        const outputCellSize = 1500;
         const count = currentLayout === '3x3' ? 3 : 2;
         const canvas = document.createElement('canvas');
         canvas.width = canvas.height = outputCellSize * count;
@@ -217,22 +217,18 @@
             const destY = destRow * outputCellSize;
 
             if(!d.img) {
-                // 画像がないマスは白で埋める
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
                 return;
             }
 
-            // プレビュー画面での配置（x, y, scale）を、高画質サイズ（outputCellSize）へ正確に換算する
             const scaleRatio = outputCellSize / CELL_PX;
 
             ctx.save();
-            // 各マスごとにクリッピング（はみ出さないようにする）
             ctx.beginPath();
             ctx.rect(destX, destY, outputCellSize, outputCellSize);
             ctx.clip();
 
-            // ユーザーが調整した位置と拡大率をそのまま高画質キャンバスに適用
             ctx.translate(destX + (d.x * scaleRatio), destY + (d.y * scaleRatio));
             ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
 
@@ -245,6 +241,8 @@
         link.href = canvas.toDataURL('image/png', 1.0);
         link.click();
     }
+
+    createCells();
 </script>
 </body>
 </html>
