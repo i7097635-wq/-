@@ -10,7 +10,7 @@
     button { padding: 8px 14px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.9rem; }
     button.active { background: #007bff; color: white; border-color: #0056b3; }
     
-    .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
+    .sub-controls { background: #fff; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
     #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; }
     .grid { display: grid; gap: 0px; }
@@ -48,41 +48,59 @@
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 90%;
+        width: 92%;
         display: none;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
         z-index: 30;
         align-items: center;
         background: rgba(255, 255, 255, 0.95);
-        padding: 4px;
+        padding: 6px;
         border-radius: 4px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
     .cell.active-input .cell-ui-container { display: flex; }
-    .cell-ui-container.pos-bottom { bottom: 5px; }
+    
+    /* 入力欄と下部スペースの調整：下部に充分な余白を持たせる */
+    .cell-ui-container.pos-bottom { bottom: 12px; }
     .cell-ui-container.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
-    .cell-text-input {
+    .cell-input-row {
+        display: flex;
+        gap: 4px;
         width: 100%;
+        justify-content: center;
+    }
+
+    .cell-text-input {
+        flex: 1;
         background: white;
         color: #333;
         border: 1px solid #ccc;
         text-align: center;
         font-weight: bold;
-        padding: 3px;
+        padding: 4px;
         border-radius: 3px;
         font-size: 0.8rem;
     }
     
     .cell-size-input {
-        width: 60px;
+        width: 50px;
         background: white;
         color: #333;
         border: 1px solid #ccc;
         font-size: 0.7rem;
         text-align: center;
         border-radius: 3px;
+    }
+
+    .cell-color-select {
+        background: white;
+        color: #333;
+        border: 1px solid #ccc;
+        font-size: 0.75rem;
+        border-radius: 3px;
+        padding: 2px;
     }
 
     .cell-text-preview {
@@ -92,19 +110,20 @@
         width: 100%;
         text-align: center;
         font-weight: bold;
-        color: white;
         text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
         pointer-events: none;
         z-index: 10;
         display: none;
     }
-    .cell-text-preview.pos-bottom { bottom: 12px; }
+    /* 下部配置時は、入力欄とかぶらないよう少し上にオフセットし、下に余白を作る */
+    .cell-text-preview.pos-bottom { bottom: 38px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
     /* 枠なし・画像にかぶせるvs/＝オーバーレイ */
     .vs-float-overlay {
         position: absolute;
         display: none;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
         z-index: 35;
@@ -113,7 +132,6 @@
     .vs-float-overlay input {
         background: transparent;
         border: none;
-        color: #fff;
         text-align: center;
         font-weight: bold;
         width: 100%;
@@ -155,15 +173,24 @@
             <option value="'Rounded Mplus 1c', sans-serif" style="font-family: 'Rounded Mplus 1c', sans-serif;">丸ゴシック</option>
             <option value="'Impact', 'Arial Black', sans-serif" style="font-family: 'Impact', sans-serif;">レトロ太字</option>
         </select>
-        <span style="margin-left:5px;">背景:</span>
-        <select id="bgColorSelect" onchange="updateContainerBackground()">
-            <option value="#fff">白</option>
-            <option value="#000">黒</option>
+        <span style="margin-left:5px;">文字色:</span>
+        <select id="defaultTextColor" onchange="updateAllTextColors()" style="padding:4px;">
+            <option value="white">白</option>
+            <option value="black">黒</option>
+            <option value="red">赤</option>
+            <option value="yellow">黄</option>
         </select>
     </div>
     <div id="vsOptions" style="display:none;">
-        <span>vsサイズ:</span> <input type="number" id="vsSizeInput" value="1.0" step="0.1" style="width:50px;" oninput="updateVsOverlays()">
-        <span>＝サイズ:</span> <input type="number" id="eqSizeInput" value="1.0" step="0.1" style="width:50px;" oninput="updateVsOverlays()">
+        <span>フォント:</span>
+        <select id="vsFontFamily" onchange="updateVsOverlays()" style="padding:4px;">
+            <option value="sans-serif" style="font-family: sans-serif;">ゴシック</option>
+            <option value="serif" style="font-family: serif;">明朝体</option>
+            <option value="'Rounded Mplus 1c', sans-serif" style="font-family: 'Rounded Mplus 1c', sans-serif;">丸ゴシック</option>
+            <option value="'Impact', 'Arial Black', sans-serif" style="font-family: 'Impact', sans-serif;">レトロ太字</option>
+        </select>
+        <span style="margin-left:4px;">vsサイズ:</span> <input type="number" id="vsSizeInput" value="1.0" step="0.1" style="width:45px;" oninput="updateVsOverlays()">
+        <span style="margin-left:4px;">＝サイズ:</span> <input type="number" id="eqSizeInput" value="1.0" step="0.1" style="width:45px;" oninput="updateVsOverlays()">
     </div>
     <div id="swapOptions" style="display:none;">
         <label><input type="checkbox" id="swapTextAlso" checked> テキストも一緒に移動</label>
@@ -206,7 +233,22 @@
         select.style.fontFamily = select.value;
         const font = select.value;
         document.querySelectorAll('.cell-text-preview').forEach(p => { p.style.fontFamily = font; });
-        document.querySelectorAll('.vs-float-overlay input').forEach(input => { input.style.fontFamily = font; });
+    }
+
+    function updateAllTextColors() {
+        const col = document.getElementById('defaultTextColor').value;
+        cellsData.forEach(d => {
+            if(!d.colorCustomized) {
+                d.color = col;
+            }
+        });
+        document.querySelectorAll('.cell-color-select').forEach(sel => {
+            const idx = sel.dataset.index;
+            if(!cellsData[idx].colorCustomized) {
+                sel.value = col;
+                if(cellsData[idx].textPreview) cellsData[idx].textPreview.style.color = col;
+            }
+        });
     }
 
     function updateContainerBackground() {
@@ -289,22 +331,22 @@
         cellsData = [];
         selectedIndices = [];
 
-        const bg = document.getElementById('bgColorSelect').value;
+        const bg = '#fff';
         const currentPos = document.getElementById('textPosition').value;
+        const defaultCol = document.getElementById('defaultTextColor').value;
 
         for(let i=0; i<count; i++) {
-            buildCellElement(grid, i, oldData, bg, currentPos);
+            buildCellElement(grid, i, oldData, bg, currentPos, defaultCol);
         }
         updateFontPreview();
-        updateContainerBackground();
         updateVsOverlays();
     }
 
-    function buildCellElement(grid, i, oldData, bg, currentPos) {
+    function buildCellElement(grid, i, oldData, bg, currentPos, defaultCol) {
         if(oldData[i]) {
             cellsData[i] = oldData[i];
         } else {
-            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: 0, selected:false };
+            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize:0, color: defaultCol, colorCustomized: false, selected:false };
         }
         cellsData[i].selected = false;
         
@@ -331,7 +373,9 @@
         const textPreview = document.createElement('div');
         textPreview.className = `cell-text-preview pos-${currentPos}`;
         textPreview.textContent = cellsData[i].text;
+        textPreview.style.color = cellsData[i].color || defaultCol;
         textPreview.style.display = (currentPattern === 'ranking' && cellsData[i].text) ? 'block' : 'none';
+        cellsData[i].textPreview = textPreview;
         
         const basePx = getCellPx();
         const customSize = Number(cellsData[i].textSize);
@@ -341,6 +385,9 @@
 
         const uiContainer = document.createElement('div');
         uiContainer.className = `cell-ui-container pos-${currentPos}`;
+
+        const inputRow = document.createElement('div');
+        inputRow.className = 'cell-input-row';
 
         const textInput = document.createElement('input');
         textInput.type = 'text';
@@ -358,7 +405,7 @@
         sizeInput.type = 'number';
         sizeInput.className = 'cell-size-input';
         sizeInput.value = cellsData[i].textSize > 0 ? cellsData[i].textSize : 0;
-        sizeInput.placeholder = '0';
+        sizeInput.placeholder = 'サイズ';
         sizeInput.oninput = (e) => {
             const val = Number(e.target.value);
             cellsData[i].textSize = val;
@@ -367,8 +414,27 @@
         };
         sizeInput.addEventListener('click', (e) => e.stopPropagation());
 
-        uiContainer.appendChild(textInput);
-        uiContainer.appendChild(sizeInput);
+        const colorSelect = document.createElement('select');
+        colorSelect.className = 'cell-color-select';
+        colorSelect.dataset.index = i;
+        ['white', 'black', 'red', 'yellow'].forEach(cName => {
+            const opt = document.createElement('option');
+            opt.value = cName;
+            opt.textContent = cName === 'white' ? '白' : cName === 'black' ? '黒' : cName === 'red' ? '赤' : '黄';
+            if(cName === cellsData[i].color) opt.selected = true;
+            colorSelect.appendChild(opt);
+        });
+        colorSelect.onchange = (e) => {
+            cellsData[i].color = e.target.value;
+            cellsData[i].colorCustomized = true;
+            textPreview.style.color = e.target.value;
+        };
+        colorSelect.addEventListener('click', (e) => e.stopPropagation());
+
+        inputRow.appendChild(textInput);
+        inputRow.appendChild(sizeInput);
+        inputRow.appendChild(colorSelect);
+        uiContainer.appendChild(inputRow);
         cell.appendChild(uiContainer);
 
         if(cellsData[i].img) {
@@ -543,10 +609,18 @@
         if(textAlso) {
             const tempText = cellsData[i].text;
             const tempSize = cellsData[i].textSize;
+            const tempCol = cellsData[i].color;
+            const tempCustom = cellsData[i].colorCustomized;
+
             cellsData[i].text = cellsData[j].text;
             cellsData[i].textSize = cellsData[j].textSize;
+            cellsData[i].color = cellsData[j].color;
+            cellsData[i].colorCustomized = cellsData[j].colorCustomized;
+
             cellsData[j].text = tempText;
             cellsData[j].textSize = tempSize;
+            cellsData[j].color = tempCol;
+            cellsData[j].colorCustomized = tempCustom;
         }
 
         createCells();
@@ -608,6 +682,7 @@
         const show = (currentPattern === 'vs' && currentLayout === '3x3');
         const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
         const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
+        const vsFont = document.getElementById('vsFontFamily').value;
 
         for(let r=0; r<3; r++) {
             const vsDiv = document.getElementById(`vs-${r}`);
@@ -622,25 +697,26 @@
             vsDiv.style.display = 'flex';
             eqDiv.style.display = 'flex';
 
-            // 各要素のサイズと位置を動的に計算（右列と真ん中列の間=vs、真ん中列と左列の間=eq）
-            // 3x3グリッドの並び: [0:左, 1:真ん中, 2:右] (インデックス順)
-            // 右(2)と真ん中(1)の境界 = 左から 2 * CELL_PX
-            // 真ん中(1)と左(0)の境界 = 左から 1 * CELL_PX
+            // 修正された位置指定：
+            // 左列(0)と真ん中列(1)の間 = vs (左から 1 * CELL_PX のところ)
+            // 真ん中列(1)と右列(2)の間 = ＝ (左から 2 * CELL_PX のところ)
             const vsSize = CELL_PX * 0.4 * vsScale;
             const eqSize = CELL_PX * 0.4 * eqScale;
 
             vsDiv.style.width = vsSize + 'px';
             vsDiv.style.height = vsSize + 'px';
-            vsDiv.style.left = (2 * CELL_PX - vsSize / 2) + 'px';
+            vsDiv.style.left = (1 * CELL_PX - vsSize / 2) + 'px';
             vsDiv.style.top = (r * CELL_PX + (CELL_PX - vsSize) / 2) + 'px';
 
             eqDiv.style.width = eqSize + 'px';
             eqDiv.style.height = eqSize + 'px';
-            eqDiv.style.left = (1 * CELL_PX - eqSize / 2) + 'px';
+            eqDiv.style.left = (2 * CELL_PX - eqSize / 2) + 'px';
             eqDiv.style.top = (r * CELL_PX + (CELL_PX - eqSize) / 2) + 'px';
 
             const vsInput = vsDiv.querySelector('input');
             const eqInput = eqDiv.querySelector('input');
+            vsInput.style.fontFamily = vsFont;
+            eqInput.style.fontFamily = vsFont;
             vsInput.style.fontSize = (vsSize * 0.7) + 'px';
             eqInput.style.fontSize = (eqSize * 0.7) + 'px';
         }
@@ -650,7 +726,7 @@
     function generateHighResImage() {
         const outputCellSize = 1500;
         const count = 3;
-        const bgCol = document.getElementById('bgColorSelect').value;
+        const bgCol = '#fff';
         
         const canvas = document.createElement('canvas');
         canvas.width = outputCellSize * count;
@@ -692,7 +768,7 @@
                 const customSize = Number(d.textSize);
                 let fontSize = (customSize > 0) ? (customSize * scaleRatio) : (outputCellSize * 0.08);
                 ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = d.color || 'white';
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = Math.max(4, fontSize * 0.1);
                 ctx.textAlign = 'center';
@@ -700,7 +776,7 @@
 
                 const textPos = document.getElementById('textPosition').value;
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.1) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.3) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
@@ -708,10 +784,11 @@
             }
         });
 
-        // 2. VSモード時の「vs」と「＝」文字の描画（枠なし・画像にかぶせる）
+        // 2. VSモード時の「vs」と「＝」文字の描画（位置逆転＆フォント・サイズ対応）
         if(currentPattern === 'vs' && currentLayout === '3x3') {
             const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
             const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
+            const vsFont = document.getElementById('vsFontFamily').value;
             
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -720,11 +797,11 @@
                 const vsInput = document.getElementById(`vs-${r}`).querySelector('input').value;
                 const eqInput = document.getElementById(`eq-${r}`).querySelector('input').value;
 
-                // 右列と真ん中列の間 (x = 2 * outputCellSize)
+                // 左列と真ん中列の間 = vs (x = 1 * outputCellSize)
                 if(vsInput) {
                     const vsFontSize = outputCellSize * 0.25 * vsScale;
-                    ctx.font = 'bold ' + vsFontSize + 'px ' + selectedFont;
-                    const x = 2 * outputCellSize;
+                    ctx.font = 'bold ' + vsFontSize + 'px ' + vsFont;
+                    const x = 1 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
 
                     ctx.strokeStyle = '#000000';
@@ -734,11 +811,11 @@
                     ctx.fillText(vsInput, x, y);
                 }
 
-                // 真ん中列と左列の間 (x = 1 * outputCellSize)
+                // 真ん中列と右列の間 = ＝ (x = 2 * outputCellSize)
                 if(eqInput) {
                     const eqFontSize = outputCellSize * 0.25 * eqScale;
-                    ctx.font = 'bold ' + eqFontSize + 'px ' + selectedFont;
-                    const x = 1 * outputCellSize;
+                    ctx.font = 'bold ' + eqFontSize + 'px ' + vsFont;
+                    const x = 2 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
 
                     ctx.strokeStyle = '#000000';
