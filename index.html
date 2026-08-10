@@ -3,243 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>超高画質・完全フチなしコラージュ＆比較メーカー</title>
+<title>正方形コラージュメーカー</title>
 <style>
-    body { font-family: sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
-    .controls { background: #fff; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
-    button { padding: 8px 14px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
-    button.active { background: #007bff; color: white; border-color: #0056b3; }
-    button.help-btn { background: #ffc107; border-color: #e0a800; }
-    button.batch-btn { background: #28a745; color: white; border-color: #1e7e34; display: none; }
-    
-    .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
-    
-    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 20px; }
+    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+    .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
+    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; }
     .grid { display: grid; gap: 0px; }
-    
-    .grid.layout-3x3 { grid-template-columns: repeat(3, 110px); grid-template-rows: repeat(3, 110px); }
-    .grid.layout-2x2 { grid-template-columns: repeat(2, 160px); grid-template-rows: repeat(2, 160px); }
-    
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
+    .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
     @media (min-width: 600px) {
-        .grid.layout-3x3 { grid-template-columns: repeat(3, 210px); grid-template-rows: repeat(3, 210px); }
-        .grid.layout-2x2 { grid-template-columns: repeat(2, 310px); grid-template-rows: repeat(2, 310px); }
+        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
+        .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
     }
-
-    .cell { 
-        background-color: #f8f9fa; 
-        position: relative; 
-        overflow: hidden; 
-        cursor: grab; 
-        user-select: none; 
-        touch-action: none; 
-        width: 100%; 
-        height: 100%; 
-        border: 1px solid #ccc;
-        box-sizing: border-box;
-    }
+    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; /* スマホで勝手にスクロールするのを防ぐ最重要設定 */ }
     .cell.dragging { cursor: grabbing; }
-    .cell.selected { border: 4px solid #ff4757 !important; z-index: 5; }
-
-    .placeholder { pointer-events: none; color: #aaa; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.5rem; z-index: 2; }
-    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; z-index: 1; }
-    
-    /* 順位バッジ */
-    .rank-badge {
-        position: absolute;
-        top: 6px;
-        left: 6px;
-        background: rgba(0, 0, 0, 0.75);
-        color: white;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-weight: bold;
-        font-size: 0.8rem;
-        z-index: 10;
-        pointer-events: none;
-    }
-    .rank-badge.gold { background: #ffd700; color: #000; }
-    .rank-badge.silver { background: #c0c0c0; color: #000; }
-    .rank-badge.bronze { background: #cd7f32; color: #fff; }
-
-    /* テキストプレビュー */
-    .cell-text-preview {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 90%;
-        text-align: center;
-        font-weight: bold;
-        pointer-events: none;
-        z-index: 10;
-        display: none;
-    }
-    .cell-text-preview.pos-bottom { bottom: 12px; }
-    .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
-
-    /* フチ（テキストシャドウ）の定義 */
-    .text-shadow-white {
-        text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
-                     -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
-    }
-    .text-shadow-black {
-        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
-                     -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
-    }
-
-    /* 各マスの設定パネル */
-    .cell-panel {
-        background: #fff;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        display: none;
-        flex-direction: column;
-        gap: 8px;
-        width: 100%;
-        max-width: 360px;
-        box-sizing: border-box;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        font-size: 0.85rem;
-        margin-bottom: 20px;
-    }
-    .cell-panel.active { display: flex; }
-    
-    .panel-row { display: flex; gap: 6px; align-items: center; justify-content: center; }
-    .panel-row input[type="text"] { flex: 1; padding: 6px; font-size: 0.85rem; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-weight: bold; }
-    .panel-row input[type="number"] { width: 60px; padding: 6px; font-size: 0.85rem; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
-    .panel-row select { padding: 6px; font-size: 0.85rem; border: 1px solid #ccc; border-radius: 4px; }
-
-    .vs-float-overlay {
-        position: absolute;
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 35;
-        pointer-events: auto;
-    }
-    .vs-float-overlay input {
-        background: transparent;
-        border: none;
-        text-align: center;
-        font-weight: bold;
-        width: 100%;
-        cursor: text;
-    }
-
-    .modal-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000;
-    }
-    .modal-content {
-        background: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; font-size: 0.9rem; line-height: 1.6;
-    }
-    .modal-close { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; font-weight: bold; }
-
-    #saveBtn { background: #28a745; color: white; padding: 12px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 10px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
+    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
+    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
+    #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
 </style>
 </head>
 <body>
 
-<h1>超高画質・完全フチなしコラージュ＆比較メーカー</h1>
-
+<h1>コラージュメーカー</h1>
 <div class="controls">
     <button onclick="setLayout('3x3')">3x3</button>
     <button onclick="setLayout('2x2')">2x2</button>
-    <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択 (一括画像): OFF</button>
-    <button id="batchUploadBtn" class="batch-btn" onclick="triggerBatchUpload()">📥 選択マスに一括画像挿入</button>
-    <button class="help-btn" onclick="openHelpModal()">❓ 使い方</button>
-    <button onclick="location.reload()" style="background:#dc3545; color:white;">リセット</button>
+    <button onclick="location.reload()">リセット</button>
 </div>
-
-<div class="sub-controls">
-    <div>
-        <span>モード:</span>
-        <button id="patternRank" class="active" onclick="setPattern('ranking')">ランキング</button>
-        <button id="patternVs" onclick="setPattern('vs')">強さ比べ</button>
-    </div>
-    <div id="rankOptions">
-        <span>位置:</span>
-        <select id="textPosition" onchange="updateTextPositions()">
-            <option value="bottom">下部</option>
-            <option value="middle">真ん中</option>
-        </select>
-        <span style="margin-left:5px;">フォント:</span>
-        <select id="fontFamily" onchange="updateFontPreview()">
-            <option value="sans-serif">ゴシック</option>
-            <option value="serif">明朝体</option>
-            <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
-            <option value="'Impact', 'Arial Black', sans-serif">レトロ太字</option>
-        </select>
-        <span style="margin-left:5px;">文字色:</span>
-        <select id="defaultTextColor" onchange="updateAllTextColors()">
-            <option value="white">白</option>
-            <option value="black">黒</option>
-            <option value="red">赤</option>
-            <option value="yellow">黄</option>
-        </select>
-    </div>
-</div>
+<p style="font-size: 0.85rem; color: #666; text-align: center;">📱 1本指で移動 / 2本指でピンチイン・アウト(拡大縮小)</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
-    <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs"></div>
-    <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝"></div>
-    <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs"></div>
-    <div class="vs-float-overlay" id="eq-1"><input type="text" value="＝"></div>
-    <div class="vs-float-overlay" id="vs-2"><input type="text" value="vs"></div>
-    <div class="vs-float-overlay" id="eq-2"><input type="text" value="＝"></div>
 </div>
-
-<!-- 選択中マスの編集パネル -->
-<div id="activeCellPanel" class="cell-panel">
-    <div style="font-weight: bold; text-align: center; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 4px;" id="panelTitle">選択中マスの編集</div>
-    <div class="panel-row">
-        <input type="text" id="panelTextInput" placeholder="ここに文字を入力" oninput="onPanelTextInput(this)">
-        <input type="number" id="panelSizeInput" value="200" placeholder="サイズ" oninput="onPanelSizeInput(this)">
-        <select id="panelColorSelect" onchange="onPanelColorSelect(this)">
-            <option value="white">白</option>
-            <option value="black">黒</option>
-            <option value="red">赤</option>
-            <option value="yellow">黄</option>
-        </select>
-    </div>
-    <div class="panel-row" style="margin-top: 2px;">
-        <button onclick="triggerFileSelectActive()" style="flex:1; background:#17a2b8; color:white;">🖼️ 画像を選ぶ・変更</button>
-        <button onclick="copyActiveCell()" style="background:#6c757d; color:white;">📋 コピー</button>
-        <button onclick="pasteActiveCell()" style="background:#28a745; color:white;">📥 ペースト</button>
-    </div>
-</div>
-
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
-
-<div class="modal-overlay" id="helpModal">
-    <div class="modal-content">
-        <h3>📖 機能ガイド</h3>
-        <p><b>1. 順位バッジ:</b> ランキングモード時は自動で「1位」「2位」などが左上に表示されます。</p>
-        <p><b>2. 複数一括挿入:</b> 「複数選択」をONにしてマスを複数タップし、「選択マスに一括画像挿入」を押すと一度に画像が反映されます。</p>
-        <p><b>3. コピペ機能:</b> マスを選んで「コピー」し、別のマスで「ペースト」すれば画像や設定をそのまま複製できます。</p>
-        <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
-    </div>
-</div>
-
-<input type="file" id="fileInput" accept="image/*" style="display:none">
-<input type="file" id="multiFileInput" multiple accept="image/*" style="display:none">
 
 <script>
     let currentLayout = '3x3';
-    let currentPattern = 'ranking';
     let cellsData = [];
-    let activeIndex = null;
-    let isMultiSelectMode = false;
-    let selectedIndices = [];
-    let clipboardData = null;
-
+    
     function getCellPx() {
-        return window.innerWidth >= 600 ? 210 : (currentLayout === '3x3' ? 110 : 160);
+        return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
     }
-
-    function openHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
-    function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
 
     function setLayout(type) {
         currentLayout = type;
@@ -247,176 +52,32 @@
         createCells();
     }
 
-    function setPattern(pattern) {
-        currentPattern = pattern;
-        document.getElementById('patternRank').classList.toggle('active', pattern === 'ranking');
-        document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
-        document.getElementById('rankOptions').style.display = (pattern === 'ranking') ? 'flex' : 'none';
-        updateVsOverlays();
-        updateRankBadges();
-    }
-
-    function toggleSelectMode() {
-        isMultiSelectMode = !isMultiSelectMode;
-        const btn = document.getElementById('modeSelectBtn');
-        btn.classList.toggle('active', isMultiSelectMode);
-        btn.textContent = `複数選択 (一括画像): ${isMultiSelectMode ? 'ON' : 'OFF'}`;
-        document.getElementById('batchUploadBtn').style.display = isMultiSelectMode ? 'inline-block' : 'none';
-        if(isMultiSelectMode) {
-            clearSelection();
-        }
-    }
-
-    function clearSelection() {
-        selectedIndices = [];
-        activeIndex = null;
-        document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-        document.getElementById('activeCellPanel').classList.remove('active');
-    }
-
-    function updateTextShadow(el, color) {
-        el.className = el.className.replace(/text-shadow-(white|black)/g, '');
-        if (color === 'black') {
-            el.classList.add('text-shadow-white');
-        } else {
-            el.classList.add('text-shadow-black');
-        }
-    }
-
-    function updateTextPositions() {
-        const pos = document.getElementById('textPosition').value;
-        cellsData.forEach(d => {
-            if(d.textPreview) {
-                d.textPreview.className = `cell-text-preview pos-${pos}`;
-            }
-        });
-    }
-
-    function updateFontPreview() {
-        const font = document.getElementById('fontFamily').value;
-        cellsData.forEach(d => {
-            if(d.textPreview) d.textPreview.style.fontFamily = font;
-        });
-    }
-
-    function updateAllTextColors() {
-        const col = document.getElementById('defaultTextColor').value;
-        cellsData.forEach(d => {
-            if(!d.colorCustomized) {
-                d.color = col;
-                if(d.textPreview) {
-                    d.textPreview.style.color = col;
-                    updateTextShadow(d.textPreview, col);
-                }
-            }
-        });
-    }
-
-    function updateRankBadges() {
-        const show = (currentPattern === 'ranking');
-        cellsData.forEach((d, i) => {
-            if(d.badgeElem) {
-                d.badgeElem.style.display = show ? 'block' : 'none';
-            }
-        });
-    }
-
     function createCells() {
         const grid = document.getElementById('grid');
         grid.innerHTML = '';
         const count = currentLayout === '3x3' ? 9 : 4;
-        
-        let oldData = [...cellsData];
         cellsData = [];
-        activeIndex = null;
-        selectedIndices = [];
-        document.getElementById('activeCellPanel').classList.remove('active');
-
-        const defaultCol = document.getElementById('defaultTextColor').value;
-        const defaultPos = document.getElementById('textPosition').value;
-        const defaultFont = document.getElementById('fontFamily').value;
-
         for(let i=0; i<count; i++) {
-            if(oldData[i]) {
-                cellsData[i] = oldData[i];
-            } else {
-                cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize:200, color:defaultCol, colorCustomized:false };
-            }
-
             const cell = document.createElement('div');
             cell.className = 'cell';
-            
-            const placeholder = document.createElement('div');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = '+';
-            cell.appendChild(placeholder);
-
-            // 順位バッジ
-            const badge = document.createElement('div');
-            badge.className = 'rank-badge';
-            if(i === 0) badge.classList.add('gold'), badge.textContent = '1位';
-            else if(i === 1) badge.classList.add('silver'), badge.textContent = '2位';
-            else if(i === 2) badge.classList.add('bronze'), badge.textContent = '3位';
-            else badge.textContent = `${i+1}位`;
-            badge.style.display = (currentPattern === 'ranking') ? 'block' : 'none';
-            cellsData[i].badgeElem = badge;
-            cell.appendChild(badge);
-
-            // テキストプレビュー
-            const textPreview = document.createElement('div');
-            textPreview.className = `cell-text-preview pos-${defaultPos}`;
-            textPreview.textContent = cellsData[i].text;
-            textPreview.style.fontFamily = defaultFont;
-            const col = cellsData[i].color || defaultCol;
-            textPreview.style.color = col;
-            updateTextShadow(textPreview, col);
-            textPreview.style.display = cellsData[i].text ? 'block' : 'none';
-            
-            const basePx = getCellPx();
-            textPreview.style.fontSize = (cellsData[i].textSize * (basePx / 1500)) + 'px';
-            cellsData[i].textPreview = textPreview;
-            cell.appendChild(textPreview);
-
-            if(cellsData[i].img && cellsData[i].canvas) {
-                placeholder.style.display = 'none';
-                cell.appendChild(cellsData[i].canvas);
-                draw(i);
-            }
-
-            setupCellEvents(cell, i);
+            cell.innerHTML = `<div class="placeholder">+</div>`;
+            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null };
+            setupCell(cell, i);
             grid.appendChild(cell);
         }
-        updateVsOverlays();
     }
 
-    function setupCellEvents(cell, i) {
+    function setupCell(cell, i) {
         cell.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if(isMultiSelectMode) {
-                const idx = selectedIndices.indexOf(i);
-                if(idx > -1) {
-                    selectedIndices.splice(idx, 1);
-                    cell.classList.remove('selected');
-                } else {
-                    selectedIndices.push(i);
-                    cell.classList.add('selected');
-                }
-                return;
-            }
-
-            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-            cell.classList.add('selected');
-            activeIndex = i;
-
-            const d = cellsData[i];
-            document.getElementById('panelTitle').textContent = `マス #${i+1} の編集`;
-            document.getElementById('panelTextInput').value = d.text || '';
-            document.getElementById('panelSizeInput').value = d.textSize || 200;
-            document.getElementById('panelColorSelect').value = d.color || document.getElementById('defaultTextColor').value;
-            document.getElementById('activeCellPanel').classList.add('active');
+            if(cellsData[i].img) return;
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = 'image/*';
+            input.onchange = (e) => {
+                if(e.target.files[0]) loadImage(e.target.files[0], i, cell);
+            };
+            input.click();
         });
-
-        // 抜群に安定している画像移動・ピンチイン実装
+        
         let isDrag = false;
         let startX = 0, startY = 0;
         let initialPinchDist = null;
@@ -433,7 +94,8 @@
             const d = cellsData[i];
             d.x += e.clientX - startX;
             d.y += e.clientY - startY;
-            startX = e.clientX; startY = e.clientY;
+            startX = e.clientX;
+            startY = e.clientY;
             applyConstraint(d, getCellPx());
             draw(i);
         });
@@ -448,7 +110,10 @@
                 initialPinchDist = null;
             } else if(e.touches.length === 2) {
                 isDrag = false;
-                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                initialPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
                 initialScale = cellsData[i].scale;
             }
         }, {passive: true});
@@ -457,15 +122,23 @@
             if(!cellsData[i].img) return;
             const d = cellsData[i];
             const CELL_PX = getCellPx();
+
             if(e.touches.length === 1 && isDrag) {
-                const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
-                d.x += cx - startX; d.y += cy - startY;
-                startX = cx; startY = cy;
+                const currentX = e.touches[0].clientX;
+                const currentY = e.touches[0].clientY;
+                d.x += currentX - startX;
+                d.y += currentY - startY;
+                startX = currentX;
+                startY = currentY;
                 applyConstraint(d, CELL_PX);
                 draw(i);
             } else if(e.touches.length === 2 && initialPinchDist !== null) {
-                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-                d.scale = initialScale * (dist / initialPinchDist);
+                const currentPinchDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const factor = currentPinchDist / initialPinchDist;
+                d.scale = initialScale * factor;
                 applyConstraint(d, CELL_PX);
                 draw(i);
             }
@@ -475,64 +148,31 @@
             if(e.touches.length < 2) initialPinchDist = null;
             if(e.touches.length === 0) isDrag = false;
         });
-
+        
         cell.addEventListener('wheel', (e) => {
             if(!cellsData[i].img) return;
             e.preventDefault();
             const d = cellsData[i];
-            d.scale *= (e.deltaY < 0 ? 1.1 : 0.9);
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            d.scale *= factor;
             applyConstraint(d, getCellPx());
             draw(i);
-        }, {passive: false});
+        }, {passive:false});
     }
 
-    function triggerFileSelectActive() {
-        if(activeIndex === null) {
-            alert('マスが選択されていません。');
-            return;
-        }
-        const input = document.getElementById('fileInput');
-        input.onchange = (e) => {
-            if(e.target.files[0]) loadImage(e.target.files[0], activeIndex);
-        };
-        input.click();
-    }
-
-    function triggerBatchUpload() {
-        if(selectedIndices.length === 0) {
-            alert('画像を入れたいマスを複数選択してください。');
-            return;
-        }
-        const input = document.getElementById('multiFileInput');
-        input.onchange = (e) => {
-            const files = e.target.files;
-            if(files.length === 0) return;
-            const sorted = [...selectedIndices].sort((a,b)=>a-b);
-            for(let f=0; f<files.length && f<sorted.length; f++) {
-                loadImage(files[f], sorted[f]);
-            }
-            clearSelection();
-            toggleSelectMode();
-        };
-        input.click();
-    }
-
-    function loadImage(file, i) {
+    function loadImage(file, i, cell) {
         const CELL_PX = getCellPx();
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
                 cellsData[i].img = img;
-                const cell = document.getElementById('grid').children[i];
                 cell.querySelector('.placeholder').style.display = 'none';
-                
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
                 cellsData[i].y = (CELL_PX - img.height * ratio) / 2;
                 
-                if(cellsData[i].canvas) cellsData[i].canvas.remove();
                 const canvas = document.createElement('canvas');
                 canvas.width = img.width; canvas.height = img.height;
                 canvas.getContext('2d').drawImage(img, 0, 0);
@@ -551,136 +191,14 @@
         const imgH = d.img.height * d.scale;
         if(imgW < size) { d.scale = size / d.img.width; }
         if(imgH < size) { d.scale = size / d.img.height; }
+        
         d.x = Math.min(0, Math.max(d.x, size - (d.img.width * d.scale)));
         d.y = Math.min(0, Math.max(d.y, size - (d.img.height * d.scale)));
     }
 
     function draw(i) {
         const d = cellsData[i];
-        if(d.canvas) {
-            d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
-        }
-    }
-
-    function onPanelTextInput(el) {
-        if(activeIndex === null) return;
-        const d = cellsData[activeIndex];
-        d.text = el.value;
-        if(d.textPreview) {
-            d.textPreview.textContent = d.text;
-            d.textPreview.style.display = d.text ? 'block' : 'none';
-        }
-    }
-
-    function onPanelSizeInput(el) {
-        if(activeIndex === null) return;
-        const d = cellsData[activeIndex];
-        const val = Number(el.value) || 200;
-        d.textSize = val;
-        if(d.textPreview) {
-            const basePx = getCellPx();
-            d.textPreview.style.fontSize = (val * (basePx / 1500)) + 'px';
-        }
-    }
-
-    function onPanelColorSelect(el) {
-        if(activeIndex === null) return;
-        const d = cellsData[activeIndex];
-        const col = el.value;
-        d.color = col;
-        d.colorCustomized = true;
-        if(d.textPreview) {
-            d.textPreview.style.color = col;
-            updateTextShadow(d.textPreview, col);
-        }
-    }
-
-    function copyActiveCell() {
-        if(activeIndex === null) { alert('マスが選択されていません。'); return; }
-        const src = cellsData[activeIndex];
-        let clonedCanvas = null;
-        if(src.canvas) {
-            clonedCanvas = document.createElement('canvas');
-            clonedCanvas.width = src.canvas.width;
-            clonedCanvas.height = src.canvas.height;
-            clonedCanvas.getContext('2d').drawImage(src.canvas, 0, 0);
-            clonedCanvas.style.display = 'block';
-        }
-        clipboardData = {
-            img: src.img, x: src.x, y: src.y, scale: src.scale,
-            canvas: clonedCanvas, text: src.text, textSize: src.textSize,
-            color: src.color, colorCustomized: src.colorCustomized
-        };
-        alert(`マス #${activeIndex+1} の内容をコピーしました！`);
-    }
-
-    function pasteActiveCell() {
-        if(activeIndex === null) { alert('貼り付け先のマスを選択してください。'); return; }
-        if(!clipboardData) { alert('コピーされたデータがありません。'); return; }
-        const dest = cellsData[activeIndex];
-        dest.img = clipboardData.img;
-        dest.x = clipboardData.x;
-        dest.y = clipboardData.y;
-        dest.scale = clipboardData.scale;
-        dest.text = clipboardData.text;
-        dest.textSize = clipboardData.textSize;
-        dest.color = clipboardData.color;
-        dest.colorCustomized = clipboardData.colorCustomized;
-
-        if(clipboardData.canvas) {
-            if(dest.canvas) dest.canvas.remove();
-            const newC = document.createElement('canvas');
-            newC.width = clipboardData.canvas.width;
-            newC.height = clipboardData.canvas.height;
-            newC.getContext('2d').drawImage(clipboardData.canvas, 0, 0);
-            newC.style.display = 'block';
-            dest.canvas = newC;
-            const cellElem = document.getElementById('grid').children[activeIndex];
-            cellElem.querySelector('.placeholder').style.display = 'none';
-            cellElem.appendChild(newC);
-            draw(activeIndex);
-        }
-
-        if(dest.textPreview) {
-            dest.textPreview.textContent = dest.text;
-            dest.textPreview.style.display = dest.text ? 'block' : 'none';
-            dest.textPreview.style.color = dest.color;
-            updateTextShadow(dest.textPreview, dest.color);
-            const basePx = getCellPx();
-            dest.textPreview.style.fontSize = (dest.textSize * (basePx / 1500)) + 'px';
-        }
-
-        document.getElementById('panelTextInput').value = dest.text || '';
-        document.getElementById('panelSizeInput').value = dest.textSize || 200;
-        document.getElementById('panelColorSelect').value = dest.color;
-        alert(`マス #${activeIndex+1} にペーストしました！`);
-    }
-
-    function updateVsOverlays() {
-        const CELL_PX = getCellPx();
-        const show = (currentPattern === 'vs' && currentLayout === '3x3');
-        for(let r=0; r<3; r++) {
-            const vsDiv = document.getElementById(`vs-${r}`);
-            const eqDiv = document.getElementById(`eq-${r}`);
-            if(!show) {
-                vsDiv.style.display = 'none';
-                eqDiv.style.display = 'none';
-                continue;
-            }
-            vsDiv.style.display = 'flex';
-            eqDiv.style.display = 'flex';
-            const size = CELL_PX * 0.45;
-            vsDiv.style.width = size + 'px'; vsDiv.style.height = size + 'px';
-            vsDiv.style.left = (1 * CELL_PX - size / 2) + 'px';
-            vsDiv.style.top = (r * CELL_PX + (CELL_PX - size) / 2) + 'px';
-
-            eqDiv.style.width = size + 'px'; eqDiv.style.height = size + 'px';
-            eqDiv.style.left = (2 * CELL_PX - size / 2) + 'px';
-            eqDiv.style.top = (r * CELL_PX + (CELL_PX - size) / 2) + 'px';
-
-            vsDiv.querySelector('input').style.fontSize = (size * 0.75) + 'px';
-            eqDiv.querySelector('input').style.fontSize = (size * 0.75) + 'px';
-        }
+        d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
     }
 
     function generateHighResImage() {
@@ -690,99 +208,33 @@
         canvas.width = canvas.height = outputCellSize * count;
         const ctx = canvas.getContext('2d');
         
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         const CELL_PX = getCellPx();
-        const scaleRatio = outputCellSize / CELL_PX;
-        const selectedFont = document.getElementById('fontFamily').value;
 
         cellsData.forEach((d, i) => {
-            if(currentLayout !== '3x3' && i >= 4) return;
             const destCol = i % count;
             const destRow = Math.floor(i / count);
             const destX = destCol * outputCellSize;
             const destY = destRow * outputCellSize;
 
-            if(d.img) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.rect(destX, destY, outputCellSize, outputCellSize);
-                ctx.clip();
-
-                ctx.translate(destX + (d.x * scaleRatio), destY + (d.y * scaleRatio));
-                ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
-                ctx.drawImage(d.img, 0, 0);
-                ctx.restore();
-            }
-
-            // 順位バッジ描画
-            if(currentPattern === 'ranking') {
-                ctx.save();
-                const badgeW = outputCellSize * 0.22;
-                const badgeH = outputCellSize * 0.12;
-                const badgeX = destX + outputCellSize * 0.04;
-                const badgeY = destY + outputCellSize * 0.04;
-                
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-                ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-                
+            if(!d.img) {
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold ' + (badgeH * 0.6) + 'px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                let rankText = (i === 0 ? '1位' : (i === 1 ? '2位' : (i === 2 ? '3位' : `${i+1}位`)));
-                ctx.fillText(rankText, badgeX + badgeW / 2, badgeY + badgeH / 2);
-                ctx.restore();
+                ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
+                return;
             }
 
-            // テキスト描画
-            if(d.text) {
-                ctx.save();
-                const fontSize = (d.textSize ? d.textSize : 200) * scaleRatio;
-                ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
-                const textColor = d.color || document.getElementById('defaultTextColor').value;
-                ctx.fillStyle = textColor;
-                
-                ctx.strokeStyle = (textColor === 'black') ? '#ffffff' : '#000000';
-                ctx.lineWidth = Math.max(5, fontSize * 0.14);
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+            const scaleRatio = outputCellSize / CELL_PX;
 
-                const textPos = document.getElementById('textPosition').value;
-                let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.2) : (destY + outputCellSize / 2);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(destX, destY, outputCellSize, outputCellSize);
+            ctx.clip();
 
-                ctx.strokeText(d.text, textX, textY);
-                ctx.fillText(d.text, textX, textY);
-                ctx.restore();
-            }
+            ctx.translate(destX + (d.x * scaleRatio), destY + (d.y * scaleRatio));
+            ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
+
+            ctx.drawImage(d.img, 0, 0);
+            ctx.restore();
         });
-
-        if(currentPattern === 'vs' && currentLayout === '3x3') {
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const vsFont = document.getElementById('fontFamily').value;
-            for(let r=0; r<3; r++) {
-                const vsInput = document.getElementById(`vs-${r}`).querySelector('input').value;
-                const eqInput = document.getElementById(`eq-${r}`).querySelector('input').value;
-
-                if(vsInput) {
-                    const fontSize = outputCellSize * 0.3;
-                    ctx.font = 'bold ' + fontSize + 'px ' + vsFont;
-                    const x = 1 * outputCellSize, y = (r * outputCellSize) + (outputCellSize / 2);
-                    ctx.strokeStyle = '#000000'; ctx.lineWidth = Math.max(6, fontSize * 0.15);
-                    ctx.strokeText(vsInput, x, y); ctx.fillStyle = '#ffffff'; ctx.fillText(vsInput, x, y);
-                }
-                if(eqInput) {
-                    const fontSize = outputCellSize * 0.3;
-                    ctx.font = 'bold ' + fontSize + 'px ' + vsFont;
-                    const x = 2 * outputCellSize, y = (r * outputCellSize) + (outputCellSize / 2);
-                    ctx.strokeStyle = '#000000'; ctx.lineWidth = Math.max(6, fontSize * 0.15);
-                    ctx.strokeText(eqInput, x, y); ctx.fillStyle = '#ffffff'; ctx.fillText(eqInput, x, y);
-                }
-            }
-        }
 
         const link = document.createElement('a');
         link.download = `collage_${currentLayout}_${Date.now()}.png`;
