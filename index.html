@@ -26,38 +26,44 @@
     .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
+    /* 入力UIはデフォルト非表示、アクティブ（タップ中・ホバー中）の時だけフワッと表示 */
     .cell-ui-container {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
-        width: 95%;
-        display: flex;
+        width: 90%;
+        display: none;
         flex-direction: column;
         gap: 2px;
         z-index: 10;
         align-items: center;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 4px;
+        border-radius: 4px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
+    .cell.active-input .cell-ui-container { display: flex; }
     .cell-ui-container.pos-bottom { bottom: 5px; }
     .cell-ui-container.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
     .cell-text-input {
         width: 100%;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border: none;
+        background: white;
+        color: #333;
+        border: 1px solid #ccc;
         text-align: center;
         font-weight: bold;
         padding: 3px;
-        border-radius: 4px;
-        font-size: 0.75rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
     }
     
     .cell-size-input {
         width: 60px;
-        background: rgba(0, 0, 0, 0.8);
-        color: #ffeb3b;
-        border: 1px solid #fff;
-        font-size: 0.65rem;
+        background: white;
+        color: #333;
+        border: 1px solid #ccc;
+        font-size: 0.7rem;
         text-align: center;
         border-radius: 3px;
     }
@@ -65,21 +71,20 @@
     .vs-overlay {
         display: none;
         position: absolute;
-        background: #333;
-        color: #fff;
-        font-weight: bold;
         justify-content: center;
         align-items: center;
         z-index: 20;
+        pointer-events: none;
     }
     .vs-overlay input {
         background: transparent;
         border: none;
-        color: white;
+        color: #333;
         text-align: center;
         font-weight: bold;
         width: 100%;
-        font-size: 1rem;
+        pointer-events: auto;
+        text-shadow: 1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff;
     }
 
     #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
@@ -110,11 +115,11 @@
             <option value="middle">真ん中</option>
         </select>
         <span style="margin-left:5px;">フォント:</span>
-        <select id="fontFamily" style="padding:4px;">
-            <option value="sans-serif">ゴシック</option>
-            <option value="serif">明朝体</option>
-            <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
-            <option value="'Courier New', monospace">レトロ</option>
+        <select id="fontFamily" onchange="updateFontPreview()" style="padding:4px;">
+            <option value="sans-serif" style="font-family: sans-serif;">ゴシック</option>
+            <option value="serif" style="font-family: serif;">明朝体</option>
+            <option value="'Rounded Mplus 1c', sans-serif" style="font-family: 'Rounded Mplus 1c', sans-serif;">丸ゴシック</option>
+            <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">レトロ</option>
         </select>
     </div>
     <div id="vsOptions" style="display:none;">
@@ -126,7 +131,7 @@
     </div>
 </div>
 
-<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 1本指移動 / 2本指ピンチイン・アウト</p>
+<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 1本指移動 / 2本指ピンチイン・アウト (マスをタップで文字入力表示)</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
@@ -140,7 +145,7 @@
 <script>
     let currentLayout = '3x3';
     let cellsData = [];
-    let selectedIndices = []; // 複数選択されたマスのインデックス順
+    let selectedIndices = [];
     let isMultiSelectMode = false;
     let isSwapMode = false;
     let firstSwapIndex = null;
@@ -148,6 +153,11 @@
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
+    }
+
+    function updateFontPreview() {
+        const select = document.getElementById('fontFamily');
+        select.style.fontFamily = select.value;
     }
 
     function setLayout(type) {
@@ -167,7 +177,6 @@
         btn.textContent = `複数選択: ${isMultiSelectMode ? 'ON' : 'OFF'}`;
         if(!isMultiSelectMode) {
             if(selectedIndices.length > 0) {
-                // 複数選択終了時に画像が一括選択されていなければファイル選択を開く
                 triggerMultiFileSelect();
             }
             clearSelections();
@@ -196,10 +205,6 @@
         document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
         document.getElementById('rankOptions').style.display = pattern === 'ranking' ? 'inline-block' : 'none';
         document.getElementById('vsOptions').style.display = pattern === 'vs' ? 'inline-block' : 'none';
-        
-        document.querySelectorAll('.cell-ui-container').forEach(el => {
-            el.style.display = pattern === 'ranking' ? 'flex' : 'none';
-        });
         updateVsOverlays();
     }
 
@@ -223,7 +228,7 @@
             if(oldData[i]) {
                 cellsData[i] = oldData[i];
             } else {
-                cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: 0, selected:false };
+                cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: '', selected:false };
             }
             cellsData[i].selected = false;
             
@@ -238,7 +243,6 @@
 
             const uiContainer = document.createElement('div');
             uiContainer.className = `cell-ui-container pos-${document.getElementById('textPosition').value}`;
-            uiContainer.style.display = currentPattern === 'ranking' ? 'flex' : 'none';
 
             const textInput = document.createElement('input');
             textInput.type = 'text';
@@ -251,9 +255,9 @@
             const sizeInput = document.createElement('input');
             sizeInput.type = 'number';
             sizeInput.className = 'cell-size-input';
-            sizeInput.value = cellsData[i].textSize || '';
+            sizeInput.value = cellsData[i].textSize !== '' ? cellsData[i].textSize : '';
             sizeInput.placeholder = '自動';
-            sizeInput.oninput = (e) => { cellsData[i].textSize = Number(e.target.value); };
+            sizeInput.oninput = (e) => { cellsData[i].textSize = e.target.value; };
             sizeInput.addEventListener('click', (e) => e.stopPropagation());
 
             uiContainer.appendChild(textInput);
@@ -269,10 +273,11 @@
             grid.appendChild(cell);
         }
         setupVsOverlays();
+        updateFontPreview();
     }
 
     function setupCell(cell, i) {
-        cell.addEventListener('click', () => {
+        cell.addEventListener('click', (e) => {
             if(isSwapMode) {
                 if(firstSwapIndex === null) {
                     firstSwapIndex = i;
@@ -304,6 +309,10 @@
             if(!cellsData[i].img) {
                 selectedIndices = [i];
                 triggerMultiFileSelect();
+            } else if(currentPattern === 'ranking') {
+                // タップで入力UIの表示/非表示を切り替え
+                document.querySelectorAll('.cell').forEach(c => { if(c !== cell) c.classList.remove('active-input'); });
+                cell.classList.toggle('active-input');
             }
         });
         
@@ -395,7 +404,6 @@
             const files = e.target.files;
             if(files.length === 0) return;
 
-            // 選択された順番（左端から右端・上から下へのインデックス順）にソート
             let targetIndices = [...selectedIndices].sort((a, b) => a - b);
             if(targetIndices.length === 0) targetIndices = [0];
 
@@ -411,7 +419,6 @@
     function swapCells(i, j) {
         const textAlso = document.getElementById('swapTextAlso').checked;
         
-        // 画像・スケール等の入れ替え
         const tempImg = cellsData[i].img;
         const tempX = cellsData[i].x;
         const tempY = cellsData[i].y;
@@ -430,7 +437,6 @@
         cellsData[j].scale = tempScale;
         cellsData[j].canvas = tempCanvas;
 
-        // テキストも含める場合
         if(textAlso) {
             const tempText = cellsData[i].text;
             const tempSize = cellsData[i].textSize;
@@ -573,7 +579,7 @@
 
             if(currentPattern === 'ranking' && d.text) {
                 ctx.save();
-                let fontSize = d.textSize ? (d.textSize * scaleRatio) : (outputCellSize * 0.08);
+                let fontSize = (d.textSize !== '' && !isNaN(d.textSize)) ? (Number(d.textSize) * scaleRatio) : (outputCellSize * 0.08);
                 ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
@@ -596,7 +602,6 @@
             const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
             const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
             
-            ctx.fillStyle = '#333333';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
 
@@ -609,6 +614,12 @@
 
                 const currentFontSize = (outputCellSize * 0.12) * (isVs ? vsScale : eqScale);
                 ctx.font = 'bold ' + currentFontSize + 'px ' + selectedFont;
+                
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = Math.max(6, currentFontSize * 0.15);
+                ctx.strokeText(input.value, destX, destY);
+
+                ctx.fillStyle = '#333333';
                 ctx.fillText(input.value, destX, destY);
             });
         }
