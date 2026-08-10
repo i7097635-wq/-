@@ -6,9 +6,10 @@
 <title>超高画質・完全フチなしコラージュ＆比較メーカー</title>
 <style>
     body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
-    .controls { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .controls { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
     button { padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.85rem; }
     button.active { background: #007bff; color: white; border-color: #0056b3; }
+    button.help-btn { background: #ffc107; border-color: #e0a800; font-weight: bold; }
     
     .sub-controls { background: #fff; padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; font-size: 0.8rem; }
     
@@ -44,7 +45,7 @@
     }
     .cell-replace-btn:hover { background: rgba(0, 0, 0, 0.8); }
 
-    /* 入力コンテナ：邪魔にならないようコンパクト＆必要最小限の余白に */
+    /* 入力コンテナ */
     .cell-ui-container {
         position: absolute;
         left: 50%;
@@ -62,7 +63,7 @@
     }
     .cell.active-input .cell-ui-container { display: flex; }
     
-    /* 下部の隙間を小さく（半分以下）に修正 */
+    /* 入力欄の位置（下部時は一番下に配置） */
     .cell-ui-container.pos-bottom { bottom: 4px; }
     .cell-ui-container.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
@@ -111,14 +112,23 @@
         width: 100%;
         text-align: center;
         font-weight: bold;
-        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
         pointer-events: none;
         z-index: 10;
         display: none;
     }
-    /* 下部文字の下の隙間を半分以下（極力詰める）に調整 */
-    .cell-text-preview.pos-bottom { bottom: 20px; }
+    /* 下部配置時、入力欄（高さ約26px+余白）と文字が被らないよう、上方に十分に余白を確保 */
+    .cell-text-preview.pos-bottom { bottom: 34px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
+
+    /* 文字色に応じた動的文字枠（シャドウ） */
+    .text-shadow-white {
+        text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
+                     -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
+    }
+    .text-shadow-black {
+        text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000,
+                     -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+    }
 
     /* 枠なし・画像にかぶせるvs/＝オーバーレイ */
     .vs-float-overlay {
@@ -136,8 +146,33 @@
         text-align: center;
         font-weight: bold;
         width: 100%;
-        text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8);
         cursor: text;
+    }
+
+    /* モーダルウィンドウ（使い方） */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    .modal-content h3 { margin-top: 0; color: #007bff; }
+    .modal-close {
+        background: #007bff; color: white; border: none; padding: 8px 16px;
+        border-radius: 4px; cursor: pointer; float: right; margin-top: 10px; font-weight: bold;
     }
 
     #saveBtn { background: #28a745; color: white; padding: 12px 25px; border-radius: 50px; border: none; cursor: pointer; margin-top: 15px; font-weight: bold; font-size: 0.95rem; }
@@ -152,6 +187,7 @@
     <button onclick="setLayout('2x2')">2x2</button>
     <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択: OFF</button>
     <button id="modeSwapBtn" onclick="toggleSwapMode()">位置交換: OFF</button>
+    <button class="help-btn" onclick="openHelpModal()">❓ 使い方</button>
     <button onclick="location.reload()">リセット</button>
 </div>
 
@@ -229,6 +265,18 @@
 
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
 
+<!-- 使い方モーダル -->
+<div class="modal-overlay" id="helpModal">
+    <div class="modal-content">
+        <h3>📖 使い方ガイド</h3>
+        <p><b>1. 画像の選択・変更:</b><br>各マスにある「画像選択」ボタンを押して画像を選びます。指やマウスのドラッグで位置調整、ピンチイン・アウト（ホイール）で拡大縮小ができます。</p>
+        <p><b>2. 文字の入力・変更:</b><br>どのモードでも、マスをタップすると下部に文字入力欄が現れます。文字、個別のサイズ、色（白・黒・赤・黄）を自由に変更できます。</p>
+        <p><b>3. モード切替:</b><br>・<b>ランキング:</b> 上部で全体サイズや文字色を一括変更できます。<br>・<b>強さ比べ:</b> 中央列に「vs」「＝」が配置され、それぞれの文字色やサイズを個別に調整できます。下部からの文字入力も可能です。</p>
+        <p><b>4. 保存:</b><br>画面下部の「高画質で保存」ボタンを押すと、自動的に超高画質なPNG画像としてダウンロードされます。</p>
+        <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
+    </div>
+</div>
+
 <input type="file" id="multiFileInput" multiple accept="image/*" style="display:none">
 
 <script>
@@ -244,6 +292,9 @@
     function getCellPx() {
         return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
     }
+
+    function openHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
+    function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
 
     function updateFontPreview() {
         const select = document.getElementById('fontFamily');
@@ -279,9 +330,21 @@
             const idx = sel.dataset.index;
             if(!cellsData[idx].colorCustomized) {
                 sel.value = col;
-                if(cellsData[idx].textPreview) cellsData[idx].textPreview.style.color = col;
+                if(cellsData[idx].textPreview) {
+                    cellsData[idx].textPreview.style.color = col;
+                    updateTextShadow(cellsData[idx].textPreview, col);
+                }
             }
         });
+    }
+
+    function updateTextShadow(el, color) {
+        el.className = el.className.replace(/text-shadow-(white|black)/g, '');
+        if (color === 'black') {
+            el.classList.add('text-shadow-white'); // 黒文字の時は白枠
+        } else {
+            el.classList.add('text-shadow-black'); // 白・赤・黄の時は黒枠
+        }
     }
 
     function setLayout(type) {
@@ -332,7 +395,7 @@
         document.getElementById('vsOptions').style.display = pattern === 'vs' ? 'inline-block' : 'none';
         
         document.querySelectorAll('.cell-text-preview').forEach(p => {
-            p.style.display = (pattern === 'ranking' && p.textContent) ? 'block' : 'none';
+            p.style.display = (p.textContent) ? 'block' : 'none';
         });
         createCells();
     }
@@ -399,7 +462,9 @@
         const textPreview = document.createElement('div');
         textPreview.className = `cell-text-preview pos-${currentPos}`;
         textPreview.textContent = cellsData[i].text;
-        textPreview.style.color = cellsData[i].color || defaultCol;
+        const currentCellColor = cellsData[i].color || defaultCol;
+        textPreview.style.color = currentCellColor;
+        updateTextShadow(textPreview, currentCellColor);
         textPreview.style.display = (cellsData[i].text) ? 'block' : 'none';
         cellsData[i].textPreview = textPreview;
         
@@ -456,6 +521,7 @@
             cellsData[i].color = e.target.value;
             cellsData[i].colorCustomized = true;
             textPreview.style.color = e.target.value;
+            updateTextShadow(textPreview, e.target.value);
         };
         colorSelect.addEventListener('click', (e) => e.stopPropagation());
 
@@ -504,7 +570,6 @@
                 return;
             }
 
-            // どのモード（ランキング・強さ比べ）でもタップで入力欄を開閉可能に
             document.querySelectorAll('.cell').forEach(c => { if(c !== cell) c.classList.remove('active-input'); });
             cell.classList.toggle('active-input');
         });
@@ -747,9 +812,17 @@
             vsInput.style.fontFamily = vsFont;
             eqInput.style.fontFamily = vsFont;
             vsInput.style.fontSize = (vsSize * 0.7) + 'px';
-            eqInput.style.fontSize = (eqSize * 0.7) + 'px';
             vsInput.style.color = vsCol;
             eqInput.style.color = eqCol;
+
+            // vs/＝の文字色に応じた影（黒文字のときは白枠、それ以外は黒枠）
+            vsInput.style.textShadow = (vsCol === 'black') 
+                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff'
+                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
+            
+            eqInput.style.textShadow = (eqCol === 'black')
+                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px -2px 0 #fff'
+                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px rgba(0,0,0,0.8)';
         }
         updateFontPreview();
     }
@@ -799,15 +872,23 @@
                 const customSize = Number(d.textSize);
                 let fontSize = (customSize > 0) ? (customSize * scaleRatio) : (outputCellSize * 0.08);
                 ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
-                ctx.fillStyle = d.color || 'white';
-                ctx.strokeStyle = 'black';
-                ctx.lineWidth = Math.max(4, fontSize * 0.1);
+                const textColor = d.color || 'white';
+                ctx.fillStyle = textColor;
+                
+                // 黒文字なら白枠、それ以外は黒枠
+                if (textColor === 'black') {
+                    ctx.strokeStyle = '#ffffff';
+                } else {
+                    ctx.strokeStyle = '#000000';
+                }
+
+                ctx.lineWidth = Math.max(4, fontSize * 0.12);
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
                 const textPos = document.getElementById('textPosition').value;
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 0.9) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.1) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
@@ -815,7 +896,7 @@
             }
         });
 
-        // 2. VSモード時の「vs」と「＝」文字の描画（色対応）
+        // 2. VSモード時の「vs」と「＝」文字の描画
         if(currentPattern === 'vs' && currentLayout === '3x3') {
             const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
             const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
@@ -836,7 +917,7 @@
                     const x = 1 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
 
-                    ctx.strokeStyle = '#000000';
+                    ctx.strokeStyle = (vsCol === 'black') ? '#ffffff' : '#000000';
                     ctx.lineWidth = Math.max(6, vsFontSize * 0.15);
                     ctx.strokeText(vsInput, x, y);
                     ctx.fillStyle = vsCol;
@@ -849,7 +930,7 @@
                     const x = 2 * outputCellSize;
                     const y = (r * outputCellSize) + (outputCellSize / 2);
 
-                    ctx.strokeStyle = '#000000';
+                    ctx.strokeStyle = (eqCol === 'black') ? '#ffffff' : '#000000';
                     ctx.lineWidth = Math.max(6, eqFontSize * 0.15);
                     ctx.strokeText(eqInput, x, y);
                     ctx.fillStyle = eqCol;
