@@ -10,6 +10,7 @@
     button { padding: 8px 14px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
     button.active { background: #007bff; color: white; border-color: #0056b3; }
     button.help-btn { background: #ffc107; border-color: #e0a800; }
+    button.batch-btn { background: #28a745; color: white; border-color: #1e7e34; display: none; }
     
     .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
@@ -69,7 +70,6 @@
     }
     .cell-action-btn:hover { background: rgba(0, 0, 0, 0.9); }
 
-    /* 文字プレビュー（下部見切れ防止＆十分な余白） */
     .cell-text-preview {
         position: absolute;
         left: 50%;
@@ -198,7 +198,6 @@
     .paste-btn { background: #28a745; }
     .paste-btn:hover { background: #218838; }
 
-    /* VS / ＝ オーバーレイ（正しく配置・表示） */
     .vs-float-overlay {
         position: absolute;
         display: none;
@@ -254,6 +253,7 @@
     <button onclick="setLayout('3x3')">3x3 グリッド</button>
     <button onclick="setLayout('2x2')">2x2 グリッド</button>
     <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択: OFF</button>
+    <button id="batchUploadBtn" class="batch-btn" onclick="triggerBatchUpload()">📥 選択マスに一括画像挿入</button>
     <button id="modeSwapBtn" onclick="toggleSwapMode()">位置交換: OFF</button>
     <button class="help-btn" onclick="openHelpModal()">❓ 使い方</button>
     <button onclick="location.reload()" style="background:#dc3545; color:white;">リセット</button>
@@ -323,11 +323,10 @@
     </div>
 </div>
 
-<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップすると真下に切り替えパネルが表示されます。</p>
+<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップして編集・選択できます。</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
-    <!-- VS / ＝ オーバーレイ (3行分) -->
     <div class="vs-float-overlay" id="vs-0"><input type="text" value="vs"></div>
     <div class="vs-float-overlay" id="eq-0"><input type="text" value="＝"></div>
     <div class="vs-float-overlay" id="vs-1"><input type="text" value="vs"></div>
@@ -341,9 +340,9 @@
 <div class="modal-overlay" id="helpModal">
     <div class="modal-content">
         <h3>📖 使い方ガイド</h3>
-        <p><b>1. モード切り替え:</b><br>文字入力モードと画像編集モードを目的に応じて切り替え可能です。</p>
-        <p><b>2. コピー＆ペースト:</b><br>位置交換と同じ安全な仕組みで、画像・ズーム・文字・色データを完璧にコピー＆ペーストできます。</p>
-        <p><b>3. 画像のフィット:</b><br>各マスの短辺に合わせて隙間なく綺麗に収まります。</p>
+        <p><b>1. 複数マス一括画像挿入:</b><br>「複数選択: ON」にして複数のマスをタップし、現れる「選択マスに一括画像挿入」ボタンから複数画像を選ぶと、選んだ順番に一気に画像が流し込まれます。</p>
+        <p><b>2. コピー＆ペースト:</b><br>画像・ズーム・文字・色が完全に複製されます。</p>
+        <p><b>3. 画像のフィット & 縁取り:</b><br>各マスの短辺に合わせて自動フィットし、文字の位置を変えても縁取りが維持されます。</p>
         <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
     </div>
 </div>
@@ -357,9 +356,9 @@
     let isMultiSelectMode = false;
     let isSwapMode = false;
     let firstSwapIndex = null;
-    let currentPattern = 'ranking';
     let targetIndexForSingle = 0;
-    let clipboardData = null; // 位置交換ロジックを流用した安全なクリップボード
+    let clipboardData = null;
+    let currentPattern = 'ranking';
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 210 : (currentLayout === '3x3' ? 110 : 160);
@@ -394,9 +393,7 @@
     function updateAllTextColors() {
         const col = document.getElementById('defaultTextColor').value;
         cellsData.forEach(d => {
-            if(!d.colorCustomized) {
-                d.color = col;
-            }
+            if(!d.colorCustomized) d.color = col;
         });
         document.querySelectorAll('.cell-color-select').forEach(sel => {
             const idx = sel.dataset.index;
@@ -434,17 +431,13 @@
             isSwapMode = false; 
             document.getElementById('modeSwapBtn').classList.remove('active'); 
             document.getElementById('swapOptions').style.display='none'; 
+        } else {
+            clearSelections();
         }
         const btn = document.getElementById('modeSelectBtn');
         btn.classList.toggle('active', isMultiSelectMode);
         btn.textContent = `複数選択: ${isMultiSelectMode ? 'ON' : 'OFF'}`;
-        if(!isMultiSelectMode) {
-            if(selectedIndices.length > 0) {
-                targetIndexForSingle = selectedIndices[0];
-                triggerFileSelect(false);
-            }
-            clearSelections();
-        }
+        document.getElementById('batchUploadBtn').style.display = isMultiSelectMode ? 'inline-block' : 'none';
     }
 
     function toggleSwapMode() {
@@ -452,6 +445,7 @@
         if(isSwapMode) { 
             isMultiSelectMode = false; 
             document.getElementById('modeSelectBtn').classList.remove('active'); 
+            document.getElementById('batchUploadBtn').style.display = 'none';
             clearSelections(); 
         }
         const btn = document.getElementById('modeSwapBtn');
@@ -473,7 +467,6 @@
         document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
         document.getElementById('rankOptions').style.display = pattern === 'ranking' ? 'inline-block' : 'none';
         document.getElementById('vsOptions').style.display = pattern === 'vs' ? 'inline-block' : 'none';
-        
         createCells();
     }
 
@@ -542,7 +535,7 @@
         replaceBtn.onclick = (e) => {
             e.stopPropagation();
             targetIndexForSingle = i;
-            triggerFileSelect(true);
+            triggerFileSelectForSingle();
         };
         btnGroup.appendChild(replaceBtn);
         cell.appendChild(btnGroup);
@@ -652,8 +645,6 @@
         copyBtn.textContent = '📋 コピー';
         copyBtn.onclick = (e) => {
             e.stopPropagation();
-            if(!cellsData[i].img && !cellsData[i].text) return;
-            // 位置交換と同様の安全なデータディープクローン
             clipboardData = {
                 img: cellsData[i].img,
                 imgUrl: cellsData[i].imgUrl,
@@ -676,7 +667,6 @@
             e.stopPropagation();
             if(!clipboardData) return;
             
-            // 位置交換関数を流用してターゲットセルに完全に反映
             cellsData[i].img = clipboardData.img;
             cellsData[i].imgUrl = clipboardData.imgUrl;
             cellsData[i].x = clipboardData.x;
@@ -846,24 +836,33 @@
         }
     });
 
-    function triggerFileSelect(isSingle) {
+    function triggerFileSelectForSingle() {
         const fileInput = document.getElementById('multiFileInput');
-        fileInput.value = '';
+        fileInput.multiple = false;
+        fileInput.onchange = (e) => {
+            const files = e.target.files;
+            if(files.length > 0) loadImage(files[0], targetIndexForSingle);
+        };
+        fileInput.click();
+    }
+
+    function triggerBatchUpload() {
+        if(selectedIndices.length === 0) {
+            alert('画像を入れたいマスを複数選択してください。');
+            return;
+        }
+        const fileInput = document.getElementById('multiFileInput');
+        fileInput.multiple = true;
         fileInput.onchange = (e) => {
             const files = e.target.files;
             if(files.length === 0) return;
-
-            if(isSingle) {
-                loadImage(files[0], targetIndexForSingle);
-            } else {
-                let targetIndices = [...selectedIndices].sort((a, b) => a - b);
-                if(targetIndices.length === 0) targetIndices = [0];
-                for(let f=0; f<files.length && f<targetIndices.length; f++) {
-                    loadImage(files[f], targetIndices[f]);
-                }
-                clearSelections();
-                if(isMultiSelectMode) toggleSelectMode();
+            
+            const sortedIndices = [...selectedIndices].sort((a,b) => a - b);
+            for(let f = 0; f < files.length && f < sortedIndices.length; f++) {
+                loadImage(files[f], sortedIndices[f]);
             }
+            clearSelections();
+            toggleSelectMode();
         };
         fileInput.click();
     }
@@ -926,7 +925,7 @@
                 cellsData[i].img = img;
                 cellsData[i].imgUrl = imgUrl;
                 
-                // 1枠(CELL_PX)に対して短い方の辺を完全に合わせるフィット計算
+                // 正確に1つのセル枠(CELL_PX)の短辺に画像を合わせる
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
@@ -972,12 +971,6 @@
         const vsCol = document.getElementById('vsColor').value;
         const eqCol = document.getElementById('eqColor').value;
 
-        // 3x3 強さ比べモードの正しいレイアウト（Col 0: 画像A, Col 1: vs, Col 2: ＝... wait, if 3 columns:
-        // Let's position vs at column boundary / between columns or in grid columns 1 and 2 if 3x3 grid has 3 image columns.
-        // Wait, in 3x3 grid, we have 3 columns of images (col 0, col 1, col 2).
-        // If someone wants VS and ＝ in 3x3: [Img 1] [vs] [Img 2] requires 4 columns! But 3x3 has only 3 columns.
-        // Therefore, in 3x3 grid, Row r has: Col 0 (Img), Col 1 (vs), Col 2 (Result/Img)? Or Col 0 vs Col 1 = Col 2?
-        // Let's place 'vs' over the border between Col 0 and Col 1, and '＝' over the border between Col 1 and Col 2!
         for(let r=0; r<3; r++) {
             const vsDiv = document.getElementById(`vs-${r}`);
             const eqDiv = document.getElementById(`eq-${r}`);
@@ -994,13 +987,11 @@
             const vsSize = CELL_PX * 0.45 * vsScale;
             const eqSize = CELL_PX * 0.45 * eqScale;
 
-            // Col 0とCol 1の間 (x = 1 * CELL_PX) に 'vs' を配置
             vsDiv.style.width = vsSize + 'px';
             vsDiv.style.height = vsSize + 'px';
             vsDiv.style.left = (1 * CELL_PX - vsSize / 2) + 'px';
             vsDiv.style.top = (r * CELL_PX + (CELL_PX - vsSize) / 2) + 'px';
 
-            // Col 1とCol 2の間 (x = 2 * CELL_PX) に '＝' を配置
             eqDiv.style.width = eqSize + 'px';
             eqDiv.style.height = eqSize + 'px';
             eqDiv.style.left = (2 * CELL_PX - eqSize / 2) + 'px';
@@ -1073,12 +1064,7 @@
                 const textColor = d.color || document.getElementById('defaultTextColor').value;
                 ctx.fillStyle = textColor;
                 
-                if (textColor === 'black') {
-                    ctx.strokeStyle = '#ffffff';
-                } else {
-                    ctx.strokeStyle = '#000000';
-                }
-
+                ctx.strokeStyle = (textColor === 'black') ? '#ffffff' : '#000000';
                 ctx.lineWidth = Math.max(5, fontSize * 0.14);
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -1088,7 +1074,6 @@
                 const textPos = (currentPattern === 'vs') ? vsPos : rankPos;
 
                 let textX = destX + outputCellSize / 2;
-                // 下部配置時の十分な余白を確保した高解像度描画位置
                 let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.5) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
