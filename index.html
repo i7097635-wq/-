@@ -14,19 +14,37 @@
     
     #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; }
     .grid { display: grid; gap: 0px; }
-    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
+    
+    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px) 40px 40px; grid-template-rows: repeat(3, 100px); }
     .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
+    
     @media (min-width: 600px) {
-        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
+        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px) 80px 80px; grid-template-rows: repeat(3, 200px); }
         .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
     }
+
     .cell { background-color: #fff; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; border: 1px solid #bbb; }
     .cell.selected { border: 3px solid #ff4757; }
     .cell.dragging { cursor: grabbing; }
     .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
     .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
     
-    /* 入力UIコンテナ（普段は非表示） */
+    /* マスごとの個別画像変更ボタン（右上） */
+    .cell-replace-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        border-radius: 3px;
+        padding: 3px 6px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        z-index: 25;
+    }
+    .cell-replace-btn:hover { background: rgba(0, 0, 0, 0.8); }
+
     .cell-ui-container {
         position: absolute;
         left: 50%;
@@ -37,7 +55,7 @@
         gap: 2px;
         z-index: 30;
         align-items: center;
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(255, 255, 255, 0.95);
         padding: 4px;
         border-radius: 4px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.3);
@@ -68,7 +86,6 @@
         border-radius: 3px;
     }
 
-    /* 画面上のライブ文字プレビュー（完成時と同じ見た目） */
     .cell-text-preview {
         position: absolute;
         left: 50%;
@@ -82,17 +99,14 @@
         z-index: 10;
         display: none;
     }
-    .cell-text-preview.pos-bottom { bottom: 8px; }
+    .cell-text-preview.pos-bottom { bottom: 12px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
-    /* vs と ＝ のオーバーレイ */
     .vs-overlay {
         display: none;
-        position: absolute;
         justify-content: center;
         align-items: center;
         z-index: 20;
-        pointer-events: none;
     }
     .vs-overlay input {
         background: transparent;
@@ -101,7 +115,6 @@
         text-align: center;
         font-weight: bold;
         width: 100%;
-        pointer-events: auto;
         text-shadow: 1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff;
     }
 
@@ -154,11 +167,10 @@
     </div>
 </div>
 
-<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 1本指移動 / 2本指ピンチイン・アウト (マスをタップで文字入力)</p>
+<p style="font-size: 0.85rem; color: #666; text-align: center; margin-top:0;">📱 マスをタップで文字入力 / 右上の「画像変更」で画像を選択</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
-    <div id="vsContainer"></div>
 </div>
 
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
@@ -173,6 +185,7 @@
     let isSwapMode = false;
     let firstSwapIndex = null;
     let currentPattern = 'ranking';
+    let targetIndexForSingle = 0;
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
@@ -182,12 +195,8 @@
         const select = document.getElementById('fontFamily');
         select.style.fontFamily = select.value;
         const font = select.value;
-        document.querySelectorAll('.cell-text-preview').forEach(p => {
-            p.style.fontFamily = font;
-        });
-        document.querySelectorAll('.vs-overlay input').forEach(input => {
-            input.style.fontFamily = font;
-        });
+        document.querySelectorAll('.cell-text-preview').forEach(p => { p.style.fontFamily = font; });
+        document.querySelectorAll('.vs-overlay input').forEach(input => { input.style.fontFamily = font; });
     }
 
     function updateContainerBackground() {
@@ -215,7 +224,8 @@
         btn.textContent = `複数選択: ${isMultiSelectMode ? 'ON' : 'OFF'}`;
         if(!isMultiSelectMode) {
             if(selectedIndices.length > 0) {
-                triggerMultiFileSelect();
+                targetIndexForSingle = selectedIndices[0];
+                triggerFileSelect(false);
             }
             clearSelections();
         }
@@ -247,7 +257,7 @@
         document.querySelectorAll('.cell-text-preview').forEach(p => {
             p.style.display = (pattern === 'ranking') ? 'block' : 'none';
         });
-        updateVsOverlays();
+        createCells();
     }
 
     function updateTextPositions() {
@@ -270,80 +280,120 @@
         selectedIndices = [];
 
         const bg = document.getElementById('bgColorSelect').value;
+        const currentPos = document.getElementById('textPosition').value;
 
-        for(let i=0; i<count; i++) {
-            if(oldData[i]) {
-                cellsData[i] = oldData[i];
-            } else {
-                cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: '', selected:false };
+        if (currentLayout === '3x3' && currentPattern === 'vs') {
+            let cellIdx = 0;
+            for(let i=0; i<15; i++) {
+                const col = i % 5;
+                if(col < 3) {
+                    const idx = cellIdx++;
+                    buildCellElement(grid, idx, oldData, bg, currentPos);
+                } else if(col === 3) {
+                    const vsDiv = document.createElement('div');
+                    vsDiv.className = 'vs-overlay';
+                    vsDiv.innerHTML = `<input type="text" value="vs" data-type="vs">`;
+                    grid.appendChild(vsDiv);
+                } else if(col === 4) {
+                    const eqDiv = document.createElement('div');
+                    eqDiv.className = 'vs-overlay';
+                    eqDiv.innerHTML = `<input type="text" value="＝" data-type="eq">`;
+                    grid.appendChild(eqDiv);
+                }
             }
-            cellsData[i].selected = false;
-            
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            if(!cellsData[i].img) cell.style.backgroundColor = bg;
-            
-            const placeholder = document.createElement('div');
-            placeholder.className = 'placeholder';
-            placeholder.textContent = '+';
-            if(cellsData[i].img) placeholder.style.display = 'none';
-            cell.appendChild(placeholder);
-
-            const currentPos = document.getElementById('textPosition').value;
-
-            // ライブプレビュー用要素
-            const textPreview = document.createElement('div');
-            textPreview.className = `cell-text-preview pos-${currentPos}`;
-            textPreview.textContent = cellsData[i].text;
-            textPreview.style.display = (currentPattern === 'ranking' && cellsData[i].text) ? 'block' : 'none';
-            cell.appendChild(textPreview);
-
-            const uiContainer = document.createElement('div');
-            uiContainer.className = `cell-ui-container pos-${currentPos}`;
-
-            const textInput = document.createElement('input');
-            textInput.type = 'text';
-            textInput.className = 'cell-text-input';
-            textInput.value = cellsData[i].text;
-            textInput.placeholder = '文字入力';
-            textInput.oninput = (e) => {
-                cellsData[i].text = e.target.value;
-                textPreview.textContent = e.target.value;
-                textPreview.style.display = (e.target.value && currentPattern === 'ranking') ? 'block' : 'none';
-            };
-            textInput.addEventListener('click', (e) => e.stopPropagation());
-
-            const sizeInput = document.createElement('input');
-            sizeInput.type = 'number';
-            sizeInput.className = 'cell-size-input';
-            sizeInput.value = cellsData[i].textSize !== '' ? cellsData[i].textSize : '';
-            sizeInput.placeholder = '自動';
-            sizeInput.oninput = (e) => {
-                cellsData[i].textSize = e.target.value;
-                const basePx = getCellPx();
-                const fontSize = (e.target.value !== '' && !isNaN(e.target.value)) ? (Number(e.target.value) * (basePx / 1500)) : (basePx * 0.08);
-                textPreview.style.fontSize = fontSize + 'px';
-            };
-            sizeInput.addEventListener('click', (e) => e.stopPropagation());
-
-            uiContainer.appendChild(textInput);
-            uiContainer.appendChild(sizeInput);
-            cell.appendChild(uiContainer);
-
-            if(cellsData[i].img) {
-                cell.appendChild(cellsData[i].canvas);
-                cellsData[i].canvas.style.display = 'block';
+        } else {
+            for(let i=0; i<count; i++) {
+                buildCellElement(grid, i, oldData, bg, currentPos);
             }
-
-            setupCell(cell, i);
-            grid.appendChild(cell);
         }
-        setupVsOverlays();
         updateFontPreview();
         updateContainerBackground();
+        updateVsOverlays();
+    }
+
+    function buildCellElement(grid, i, oldData, bg, currentPos) {
+        if(oldData[i]) {
+            cellsData[i] = oldData[i];
+        } else {
+            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize: 0, selected:false };
+        }
+        cellsData[i].selected = false;
+        
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if(!cellsData[i].img) cell.style.backgroundColor = bg;
+        
+        const placeholder = document.createElement('div');
+        placeholder.className = 'placeholder';
+        placeholder.textContent = '+';
+        if(cellsData[i].img) placeholder.style.display = 'none';
+        cell.appendChild(placeholder);
+
+        // 画像入れ直しボタン（個別）
+        const replaceBtn = document.createElement('button');
+        replaceBtn.className = 'cell-replace-btn';
+        replaceBtn.textContent = cellsData[i].img ? '画像変更' : '画像選択';
+        replaceBtn.onclick = (e) => {
+            e.stopPropagation();
+            targetIndexForSingle = i;
+            triggerFileSelect(true);
+        };
+        cell.appendChild(replaceBtn);
+
+        const textPreview = document.createElement('div');
+        textPreview.className = `cell-text-preview pos-${currentPos}`;
+        textPreview.textContent = cellsData[i].text;
+        textPreview.style.display = (currentPattern === 'ranking' && cellsData[i].text) ? 'block' : 'none';
+        
+        const basePx = getCellPx();
+        const customSize = Number(cellsData[i].textSize);
+        const fontSize = (customSize > 0) ? (customSize * (basePx / 1500)) : (basePx * 0.08);
+        textPreview.style.fontSize = fontSize + 'px';
+        cell.appendChild(textPreview);
+
+        const uiContainer = document.createElement('div');
+        uiContainer.className = `cell-ui-container pos-${currentPos}`;
+
+        const textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.className = 'cell-text-input';
+        textInput.value = cellsData[i].text;
+        textInput.placeholder = '文字入力';
+        textInput.oninput = (e) => {
+            cellsData[i].text = e.target.value;
+            textPreview.textContent = e.target.value;
+            textPreview.style.display = (e.target.value && currentPattern === 'ranking') ? 'block' : 'none';
+        };
+        textInput.addEventListener('click', (e) => e.stopPropagation());
+
+        const sizeInput = document.createElement('input');
+        sizeInput.type = 'number';
+        sizeInput.className = 'cell-size-input';
+        sizeInput.value = cellsData[i].textSize > 0 ? cellsData[i].textSize : 0;
+        sizeInput.placeholder = '0';
+        sizeInput.oninput = (e) => {
+            const val = Number(e.target.value);
+            cellsData[i].textSize = val;
+            const fSize = (val > 0) ? (val * (basePx / 1500)) : (basePx * 0.08);
+            textPreview.style.fontSize = fSize + 'px';
+        };
+        sizeInput.addEventListener('click', (e) => e.stopPropagation());
+
+        uiContainer.appendChild(textInput);
+        uiContainer.appendChild(sizeInput);
+        cell.appendChild(uiContainer);
+
+        if(cellsData[i].img) {
+            cell.appendChild(cellsData[i].canvas);
+            cellsData[i].canvas.style.display = 'block';
+        }
+
+        setupCell(cell, i);
+        grid.appendChild(cell);
     }
 
     function setupCell(cell, i) {
+        // マスをタップした時は「文字入力欄の開閉」のみ行う（画像選択とは完全に分離）
         cell.addEventListener('click', (e) => {
             if(isSwapMode) {
                 if(firstSwapIndex === null) {
@@ -373,10 +423,7 @@
                 return;
             }
 
-            if(!cellsData[i].img) {
-                selectedIndices = [i];
-                triggerMultiFileSelect();
-            } else if(currentPattern === 'ranking') {
+            if(currentPattern === 'ranking') {
                 document.querySelectorAll('.cell').forEach(c => { if(c !== cell) c.classList.remove('active-input'); });
                 cell.classList.toggle('active-input');
             }
@@ -463,21 +510,24 @@
         }, {passive:false});
     }
 
-    function triggerMultiFileSelect() {
+    function triggerFileSelect(isSingle) {
         const fileInput = document.getElementById('multiFileInput');
         fileInput.value = '';
         fileInput.onchange = (e) => {
             const files = e.target.files;
             if(files.length === 0) return;
 
-            let targetIndices = [...selectedIndices].sort((a, b) => a - b);
-            if(targetIndices.length === 0) targetIndices = [0];
-
-            for(let f=0; f<files.length && f<targetIndices.length; f++) {
-                loadImage(files[f], targetIndices[f]);
+            if(isSingle) {
+                loadImage(files[0], targetIndexForSingle);
+            } else {
+                let targetIndices = [...selectedIndices].sort((a, b) => a - b);
+                if(targetIndices.length === 0) targetIndices = [0];
+                for(let f=0; f<files.length && f<targetIndices.length; f++) {
+                    loadImage(files[f], targetIndices[f]);
+                }
+                clearSelections();
+                if(isMultiSelectMode) toggleSelectMode();
             }
-            clearSelections();
-            if(isMultiSelectMode) toggleSelectMode();
         };
         fileInput.click();
     }
@@ -517,14 +567,19 @@
 
     function loadImage(file, i) {
         const CELL_PX = getCellPx();
-        const cell = document.getElementById('grid').children[i];
-        cell.style.backgroundColor = '';
+        const gridChildren = document.querySelectorAll('.grid > .cell');
+        const targetCell = gridChildren[i];
+        if(!targetCell) return;
+
+        targetCell.style.backgroundColor = '';
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
                 cellsData[i].img = img;
-                cell.querySelector('.placeholder').style.display = 'none';
+                targetCell.querySelector('.placeholder').style.display = 'none';
+                targetCell.querySelector('.cell-replace-btn').textContent = '画像変更';
+                
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
@@ -536,7 +591,7 @@
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 canvas.style.display = 'block';
                 cellsData[i].canvas = canvas;
-                cell.appendChild(canvas);
+                targetCell.appendChild(canvas);
                 draw(i);
             };
             img.src = e.target.result;
@@ -556,56 +611,23 @@
 
     function draw(i) {
         const d = cellsData[i];
-        d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
-    }
-
-    function setupVsOverlays() {
-        const container = document.getElementById('vsContainer');
-        container.innerHTML = '';
-        if(currentLayout !== '3x3') return;
-
-        for(let row=0; row<3; row++) {
-            // 左列と真ん中列の間 = vs
-            const vsDiv = document.createElement('div');
-            vsDiv.className = 'vs-overlay';
-            vsDiv.innerHTML = `<input type="text" value="vs" data-row="${row}" data-type="vs">`;
-            container.appendChild(vsDiv);
-
-            // 真ん中列と右列の間 = ＝
-            const eqDiv = document.createElement('div');
-            eqDiv.className = 'vs-overlay';
-            eqDiv.innerHTML = `<input type="text" value="＝" data-row="${row}" data-type="eq">`;
-            container.appendChild(eqDiv);
+        if(d.canvas) {
+            d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
         }
-        updateVsOverlays();
-        updateFontPreview();
     }
 
     function updateVsOverlays() {
         const overlays = document.querySelectorAll('.vs-overlay');
         const show = (currentPattern === 'vs' && currentLayout === '3x3');
-        const CELL_PX = getCellPx();
-        const vsSpace = 40; // 隙間の幅
-
-        overlays.forEach((div, idx) => {
+        overlays.forEach(div => {
             div.style.display = show ? 'flex' : 'none';
-            if(!show) return;
-            const row = Math.floor(idx / 2);
-            const isVs = (idx % 2 === 0);
-            
-            let left = isVs ? (CELL_PX + (CELL_PX - vsSpace)/2) : (CELL_PX * 2 + (CELL_PX - vsSpace)/2);
-            let top = row * CELL_PX;
-
-            div.style.width = vsSpace + 'px';
-            div.style.height = CELL_PX + 'px';
-            div.style.left = left + 'px';
-            div.style.top = top + 'px';
-
             const input = div.querySelector('input');
             const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
             const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
+            const isVs = input.dataset.type === 'vs';
             input.style.fontSize = (isVs ? (1 * vsScale) : (1 * eqScale)) + 'rem';
         });
+        updateFontPreview();
     }
 
     function generateHighResImage() {
@@ -649,7 +671,8 @@
 
             if(currentPattern === 'ranking' && d.text) {
                 ctx.save();
-                let fontSize = (d.textSize !== '' && !isNaN(d.textSize)) ? (Number(d.textSize) * scaleRatio) : (outputCellSize * 0.08);
+                const customSize = Number(d.textSize);
+                let fontSize = (customSize > 0) ? (customSize * scaleRatio) : (outputCellSize * 0.08);
                 ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
                 ctx.fillStyle = 'white';
                 ctx.strokeStyle = 'black';
@@ -659,7 +682,7 @@
 
                 const textPos = document.getElementById('textPosition').value;
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 0.8) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.1) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
