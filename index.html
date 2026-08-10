@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>超高画質・完全フチなしコラージュ＆比較メーカー（完全版）</title>
+<title>超高画質・完全フチなしコラージュ＆比較メーカー</title>
 <style>
     body { font-family: sans-serif; background: #eef2f5; display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; }
     .controls { background: #fff; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
@@ -14,7 +14,7 @@
     
     .sub-controls { background: #fff; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; font-size: 0.85rem; }
     
-    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 50px; }
+    #editor-container { box-shadow: 0 6px 15px rgba(0,0,0,0.2); background: #fff; line-height: 0; position: relative; margin-bottom: 40px; }
     .grid { display: grid; gap: 0px; }
     
     .grid.layout-3x3 { grid-template-columns: repeat(3, 110px); grid-template-rows: repeat(3, 110px); }
@@ -25,15 +25,8 @@
         .grid.layout-2x2 { grid-template-columns: repeat(2, 310px); grid-template-rows: repeat(2, 310px); }
     }
 
-    .cell-wrapper {
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        background: #fff;
-    }
-
     .cell { 
-        background-color: #fff; 
+        background-color: #f8f9fa; 
         position: relative; 
         overflow: hidden; 
         cursor: grab; 
@@ -41,35 +34,15 @@
         touch-action: none; 
         width: 100%; 
         height: 100%; 
-        flex: 1;
         border: 1px solid #ccc;
         box-sizing: border-box;
     }
     .cell.dragging { cursor: grabbing; }
-    .cell-wrapper.selected .cell { border: 3px solid #ff4757; z-index: 5; }
+    .cell.selected { border: 4px solid #ff4757 !important; z-index: 5; }
 
-    .placeholder { pointer-events: none; color: #aaa; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.5rem; }
-    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
+    .placeholder { pointer-events: none; color: #aaa; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.5rem; z-index: 2; }
+    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; z-index: 1; }
     
-    .cell-btn-group {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        display: flex;
-        gap: 4px;
-        z-index: 25;
-    }
-    .cell-action-btn {
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 0.7rem;
-        cursor: pointer;
-    }
-    .cell-action-btn:hover { background: rgba(0, 0, 0, 0.9); }
-
     .cell-text-preview {
         position: absolute;
         left: 50%;
@@ -81,9 +54,10 @@
         z-index: 10;
         display: none;
     }
-    .cell-text-preview.pos-bottom { bottom: 16px; }
+    .cell-text-preview.pos-bottom { bottom: 12px; }
     .cell-text-preview.pos-middle { top: 50%; transform: translate(-50%, -50%); }
 
+    /* 縁取り（テキストシャドウ）の定義 */
     .text-shadow-white {
         text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff,
                      -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff;
@@ -93,110 +67,26 @@
                      -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
     }
 
-    .cell-external-ui {
-        background: #fdfdfd;
-        padding: 6px;
+    /* 各マスの設定パネル（下部ドロワー） */
+    .cell-panel {
+        background: #fff;
+        padding: 8px;
         border: 1px solid #ccc;
         border-top: none;
         display: none;
         flex-direction: column;
-        gap: 5px;
-        z-index: 30;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        width: 100%;
-        box-sizing: border-box;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        border-bottom-left-radius: 6px;
-        border-bottom-right-radius: 6px;
-    }
-    .cell-wrapper.selected .cell-external-ui {
-        display: flex;
-    }
-
-    .mode-tab-row {
-        display: flex;
-        background: #e9ecef;
-        border-radius: 4px;
-        padding: 2px;
-        gap: 2px;
-    }
-    .mode-tab-btn {
-        flex: 1;
-        padding: 4px;
-        font-size: 0.75rem;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        border-radius: 3px;
-        font-weight: bold;
-        color: #555;
-    }
-    .mode-tab-btn.active {
-        background: #fff;
-        color: #007bff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .mode-content { display: none; }
-    .mode-content.active { display: flex; flex-direction: column; gap: 4px; }
-
-    .cell-input-row {
-        display: flex;
-        gap: 4px;
-        width: 100%;
-        justify-content: center;
-        align-items: center;
-    }
-    .cell-text-input {
-        flex: 1;
-        background: white;
-        color: #333;
-        border: 1px solid #ccc;
-        text-align: center;
-        font-weight: bold;
-        padding: 4px;
-        border-radius: 3px;
-        font-size: 0.8rem;
-    }
-    .cell-size-input {
-        width: 45px;
-        background: white;
-        color: #333;
-        border: 1px solid #ccc;
-        font-size: 0.75rem;
-        text-align: center;
-        border-radius: 3px;
-    }
-    .cell-color-select {
-        background: white;
-        color: #333;
-        border: 1px solid #ccc;
-        font-size: 0.75rem;
-        border-radius: 3px;
-        padding: 3px;
-    }
-
-    .copypaste-row {
-        display: flex;
         gap: 6px;
         width: 100%;
-    }
-    .cell-big-btn {
-        flex: 1;
-        padding: 6px;
+        box-sizing: border-box;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         font-size: 0.8rem;
-        font-weight: bold;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
     }
-    .copy-btn { background: #6c757d; }
-    .copy-btn:hover { background: #5a6268; }
-    .paste-btn { background: #28a745; }
-    .paste-btn:hover { background: #218838; }
+    .cell-panel.active { display: flex; }
+    
+    .panel-row { display: flex; gap: 4px; align-items: center; justify-content: center; }
+    .panel-row input[type="text"] { flex: 1; padding: 4px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; text-align: center; font-weight: bold; }
+    .panel-row input[type="number"] { width: 50px; padding: 4px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; text-align: center; }
+    .panel-row select { padding: 4px; font-size: 0.8rem; border: 1px solid #ccc; border-radius: 3px; }
 
     .vs-float-overlay {
         position: absolute;
@@ -216,45 +106,26 @@
     }
 
     .modal-overlay {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000;
     }
     .modal-content {
-        background: #fff;
-        padding: 20px;
-        border-radius: 8px;
-        width: 90%;
-        max-width: 420px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        font-size: 0.9rem;
-        line-height: 1.6;
-        max-height: 80vh;
-        overflow-y: auto;
+        background: #fff; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; font-size: 0.9rem; line-height: 1.6;
     }
-    .modal-content h3 { margin-top: 0; color: #007bff; }
-    .modal-close {
-        background: #007bff; color: white; border: none; padding: 8px 16px;
-        border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; font-weight: bold;
-    }
+    .modal-close { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; float: right; margin-top: 15px; font-weight: bold; }
 
-    #saveBtn { background: #28a745; color: white; padding: 12px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 30px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
+    #saveBtn { background: #28a745; color: white; padding: 12px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; box-shadow: 0 4px 10px rgba(40,167,69,0.3); }
 </style>
 </head>
 <body>
 
-<h1>超高画質・コラージュ＆比較メーカー</h1>
+<h1>超高画質・完全フチなしコラージュ＆比較メーカー</h1>
 
 <div class="controls">
-    <button onclick="setLayout('3x3')">3x3 グリッド</button>
-    <button onclick="setLayout('2x2')">2x2 グリッド</button>
-    <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択: OFF</button>
+    <button onclick="setLayout('3x3')">3x3</button>
+    <button onclick="setLayout('2x2')">2x2</button>
+    <button id="modeSelectBtn" onclick="toggleSelectMode()">複数選択 (一括画像): OFF</button>
     <button id="batchUploadBtn" class="batch-btn" onclick="triggerBatchUpload()">📥 選択マスに一括画像挿入</button>
-    <button id="modeSwapBtn" onclick="toggleSwapMode()">位置交換: OFF</button>
     <button class="help-btn" onclick="openHelpModal()">❓ 使い方</button>
     <button onclick="location.reload()" style="background:#dc3545; color:white;">リセット</button>
 </div>
@@ -272,58 +143,23 @@
             <option value="middle">真ん中</option>
         </select>
         <span style="margin-left:5px;">フォント:</span>
-        <select id="fontFamily" onchange="updateFontPreview()" style="padding:3px;">
+        <select id="fontFamily" onchange="updateFontPreview()">
             <option value="sans-serif">ゴシック</option>
             <option value="serif">明朝体</option>
             <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
             <option value="'Impact', 'Arial Black', sans-serif">レトロ太字</option>
         </select>
-        <span style="margin-left:5px;">全体サイズ:</span>
-        <input type="number" id="globalTextSize" value="200" style="width:45px;" oninput="updateGlobalTextSize()">
-        <span style="margin-left:5px;">全体文字色:</span>
-        <select id="defaultTextColor" onchange="updateAllTextColors()" style="padding:3px;">
+        <span style="margin-left:5px;">文字色:</span>
+        <select id="defaultTextColor" onchange="updateAllTextColors()">
             <option value="white">白</option>
             <option value="black">黒</option>
             <option value="red">赤</option>
             <option value="yellow">黄</option>
         </select>
-    </div>
-    <div id="vsOptions" style="display:none;">
-        <span>位置:</span>
-        <select id="textPositionVs" onchange="updateTextPositions()">
-            <option value="bottom">下部</option>
-            <option value="middle">真ん中</option>
-        </select>
-        <span style="margin-left:5px;">フォント:</span>
-        <select id="vsFontFamily" onchange="updateVsOverlays()" style="padding:3px;">
-            <option value="sans-serif">ゴシック</option>
-            <option value="serif">明朝体</option>
-            <option value="'Rounded Mplus 1c', sans-serif">丸ゴシック</option>
-            <option value="'Impact', 'Arial Black', sans-serif">レトロ太字</option>
-        </select>
-        <span style="margin-left:5px;">vs色:</span>
-        <select id="vsColor" onchange="updateVsOverlays()" style="padding:3px;">
-            <option value="white">白</option>
-            <option value="yellow">黄</option>
-            <option value="red">赤</option>
-            <option value="black">黒</option>
-        </select>
-        <span style="margin-left:5px;">＝色:</span>
-        <select id="eqColor" onchange="updateVsOverlays()" style="padding:3px;">
-            <option value="white">白</option>
-            <option value="yellow">黄</option>
-            <option value="red">赤</option>
-            <option value="black">黒</option>
-        </select>
-        <span style="margin-left:5px;">vsサイズ:</span> <input type="number" id="vsSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
-        <span style="margin-left:5px;">＝サイズ:</span> <input type="number" id="eqSizeInput" value="1.0" step="0.1" style="width:38px;" oninput="updateVsOverlays()">
-    </div>
-    <div id="swapOptions" style="display:none;">
-        <label><input type="checkbox" id="swapTextAlso" checked> テキストも一緒に交換</label>
     </div>
 </div>
 
-<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップして編集・選択できます。</p>
+<p style="font-size: 0.8rem; color: #555; text-align: center; margin-top:0;">📱 マスをタップして画像・文字を選択。下のパネルで詳細編集できます。</p>
 
 <div id="editor-container">
     <div id="grid" class="grid layout-3x3"></div>
@@ -335,30 +171,49 @@
     <div class="vs-float-overlay" id="eq-2"><input type="text" value="＝"></div>
 </div>
 
+<!-- 選択中マスの編集パネル -->
+<div id="activeCellPanel" class="cell-panel" style="max-width: 340px; margin-bottom: 20px; border-radius: 8px;">
+    <div style="font-weight: bold; text-align: center; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 4px;" id="panelTitle">選択中マスの編集</div>
+    <div class="panel-row">
+        <input type="text" id="panelTextInput" placeholder="ここに文字を入力" oninput="onPanelTextInput(this)">
+        <input type="number" id="panelSizeInput" value="200" placeholder="サイズ" oninput="onPanelSizeInput(this)">
+        <select id="panelColorSelect" onchange="onPanelColorSelect(this)">
+            <option value="white">白</option>
+            <option value="black">黒</option>
+            <option value="red">赤</option>
+            <option value="yellow">黄</option>
+        </select>
+    </div>
+    <div class="panel-row" style="margin-top: 4px;">
+        <button onclick="triggerFileSelectActive()" style="flex:1; background:#17a2b8; color:white;">🖼️ 画像を選ぶ・変更</button>
+        <button onclick="copyActiveCell()" style="background:#6c757d; color:white;">📋 コピー</button>
+        <button onclick="pasteActiveCell()" style="background:#28a745; color:white;">📥 ペースト</button>
+    </div>
+</div>
+
 <button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
 
 <div class="modal-overlay" id="helpModal">
     <div class="modal-content">
         <h3>📖 使い方ガイド</h3>
-        <p><b>1. 複数マス一括画像挿入:</b><br>「複数選択: ON」にして複数のマスをタップし、現れる「選択マスに一括画像挿入」ボタンから複数画像を選ぶと、選んだ順番に一気に画像が流し込まれます。</p>
-        <p><b>2. コピー＆ペースト:</b><br>画像・ズーム・文字・色が完全に複製されます。</p>
-        <p><b>3. 画像のフィット & 縁取り:</b><br>各マスの短辺に合わせて自動フィットし、文字の位置を変えても縁取りが維持されます。</p>
+        <p><b>1. 複数マス一括画像挿入:</b><br>「複数選択」をONにして複数のマスをタップし、「選択マスに一括画像挿入」を押すと、選んだ順番に一気に画像が流し込まれます。</p>
+        <p><b>2. マス選択と編集:</b><br>マスをタップすると選択され、画面下部にそのマスの文字・サイズ・色・コピー／ペースト用パネルが表示されます。</p>
+        <p><b>3. 文字位置の切り替えと縁取り:</b><br>上部の「下部」「真ん中」を切り替えても、文字の縁（フチ）は自動で美しく維持されます。</p>
         <button class="modal-close" onclick="closeHelpModal()">閉じる</button>
     </div>
 </div>
 
+<input type="file" id="fileInput" accept="image/*" style="display:none">
 <input type="file" id="multiFileInput" multiple accept="image/*" style="display:none">
 
 <script>
     let currentLayout = '3x3';
-    let cellsData = [];
-    let selectedIndices = [];
-    let isMultiSelectMode = false;
-    let isSwapMode = false;
-    let firstSwapIndex = null;
-    let targetIndexForSingle = 0;
-    let clipboardData = null;
     let currentPattern = 'ranking';
+    let cellsData = [];
+    let activeIndex = null;
+    let isMultiSelectMode = false;
+    let selectedIndices = [];
+    let clipboardData = null;
 
     function getCellPx() {
         return window.innerWidth >= 600 ? 210 : (currentLayout === '3x3' ? 110 : 160);
@@ -367,44 +222,35 @@
     function openHelpModal() { document.getElementById('helpModal').style.display = 'flex'; }
     function closeHelpModal() { document.getElementById('helpModal').style.display = 'none'; }
 
-    function updateFontPreview() {
-        const select = document.getElementById('fontFamily');
-        const font = select.value;
-        document.querySelectorAll('.cell-text-preview').forEach(p => { p.style.fontFamily = font; });
+    function setLayout(type) {
+        currentLayout = type;
+        document.getElementById('grid').className = `grid layout-${type}`;
+        createCells();
     }
 
-    function updateGlobalTextSize() {
-        const globalVal = Number(document.getElementById('globalTextSize').value) || 200;
-        const basePx = getCellPx();
-        cellsData.forEach((d, i) => {
-            if(!d.sizeCustomized) {
-                d.textSize = globalVal;
-                const sizeInput = document.getElementById(`size-input-${i}`);
-                if(sizeInput) sizeInput.value = globalVal;
-                const textPreview = d.textPreview;
-                if(textPreview) {
-                    const fontSize = globalVal * (basePx / 1500);
-                    textPreview.style.fontSize = fontSize + 'px';
-                }
-            }
-        });
+    function setPattern(pattern) {
+        currentPattern = pattern;
+        document.getElementById('patternRank').classList.toggle('active', pattern === 'ranking');
+        document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
+        updateVsOverlays();
     }
 
-    function updateAllTextColors() {
-        const col = document.getElementById('defaultTextColor').value;
-        cellsData.forEach(d => {
-            if(!d.colorCustomized) d.color = col;
-        });
-        document.querySelectorAll('.cell-color-select').forEach(sel => {
-            const idx = sel.dataset.index;
-            if(!cellsData[idx].colorCustomized) {
-                sel.value = col;
-                if(cellsData[idx].textPreview) {
-                    cellsData[idx].textPreview.style.color = col;
-                    updateTextShadow(cellsData[idx].textPreview, col);
-                }
-            }
-        });
+    function toggleSelectMode() {
+        isMultiSelectMode = !isMultiSelectMode;
+        const btn = document.getElementById('modeSelectBtn');
+        btn.classList.toggle('active', isMultiSelectMode);
+        btn.textContent = `複数選択 (一括画像): ${isMultiSelectMode ? 'ON' : 'OFF'}`;
+        document.getElementById('batchUploadBtn').style.display = isMultiSelectMode ? 'inline-block' : 'none';
+        if(isMultiSelectMode) {
+            clearSelection();
+        }
+    }
+
+    function clearSelection() {
+        selectedIndices = [];
+        activeIndex = null;
+        document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+        document.getElementById('activeCellPanel').classList.remove('active');
     }
 
     function updateTextShadow(el, color) {
@@ -416,70 +262,32 @@
         }
     }
 
-    function setLayout(type) {
-        if(currentLayout === '3x3' && type === '2x2' && cellsData.length > 4) {
-            if(!confirm('3x3から2x2に変更すると一部データがリセットされますがよろしいですか？')) return;
-        }
-        currentLayout = type;
-        document.getElementById('grid').className = `grid layout-${type}`;
-        createCells();
-    }
-
-    function toggleSelectMode() {
-        isMultiSelectMode = !isMultiSelectMode;
-        if(isMultiSelectMode) { 
-            isSwapMode = false; 
-            document.getElementById('modeSwapBtn').classList.remove('active'); 
-            document.getElementById('swapOptions').style.display='none'; 
-        } else {
-            clearSelections();
-        }
-        const btn = document.getElementById('modeSelectBtn');
-        btn.classList.toggle('active', isMultiSelectMode);
-        btn.textContent = `複数選択: ${isMultiSelectMode ? 'ON' : 'OFF'}`;
-        document.getElementById('batchUploadBtn').style.display = isMultiSelectMode ? 'inline-block' : 'none';
-    }
-
-    function toggleSwapMode() {
-        isSwapMode = !isSwapMode;
-        if(isSwapMode) { 
-            isMultiSelectMode = false; 
-            document.getElementById('modeSelectBtn').classList.remove('active'); 
-            document.getElementById('batchUploadBtn').style.display = 'none';
-            clearSelections(); 
-        }
-        const btn = document.getElementById('modeSwapBtn');
-        btn.classList.toggle('active', isSwapMode);
-        btn.textContent = `位置交換: ${isSwapMode ? 'ON' : 'OFF'}`;
-        document.getElementById('swapOptions').style.display = isSwapMode ? 'inline-block' : 'none';
-        firstSwapIndex = null;
-    }
-
-    function clearSelections() {
-        selectedIndices = [];
-        cellsData.forEach(d => d.selected = false);
-        document.querySelectorAll('.cell-wrapper').forEach(c => c.classList.remove('selected'));
-    }
-
-    function setPattern(pattern) {
-        currentPattern = pattern;
-        document.getElementById('patternRank').classList.toggle('active', pattern === 'ranking');
-        document.getElementById('patternVs').classList.toggle('active', pattern === 'vs');
-        document.getElementById('rankOptions').style.display = pattern === 'ranking' ? 'inline-block' : 'none';
-        document.getElementById('vsOptions').style.display = pattern === 'vs' ? 'inline-block' : 'none';
-        createCells();
-    }
-
     function updateTextPositions() {
-        const rankPos = document.getElementById('textPosition').value;
-        const vsPos = document.getElementById('textPositionVs').value;
-        const currentPos = (currentPattern === 'vs') ? vsPos : rankPos;
+        const pos = document.getElementById('textPosition').value;
+        cellsData.forEach(d => {
+            if(d.textPreview) {
+                d.textPreview.className = `cell-text-preview pos-${pos}`;
+            }
+        });
+    }
 
-        document.getElementById('textPosition').value = currentPos;
-        document.getElementById('textPositionVs').value = currentPos;
+    function updateFontPreview() {
+        const font = document.getElementById('fontFamily').value;
+        cellsData.forEach(d => {
+            if(d.textPreview) d.textPreview.style.fontFamily = font;
+        });
+    }
 
-        document.querySelectorAll('.cell-text-preview').forEach(p => {
-            p.className = `cell-text-preview pos-${currentPos}`;
+    function updateAllTextColors() {
+        const col = document.getElementById('defaultTextColor').value;
+        cellsData.forEach(d => {
+            if(!d.colorCustomized) {
+                d.color = col;
+                if(d.textPreview) {
+                    d.textPreview.style.color = col;
+                    updateTextShadow(d.textPreview, col);
+                }
+            }
         });
     }
 
@@ -490,272 +298,91 @@
         
         let oldData = [...cellsData];
         cellsData = [];
+        activeIndex = null;
         selectedIndices = [];
+        document.getElementById('activeCellPanel').classList.remove('active');
 
-        const rankPos = document.getElementById('textPosition').value;
-        const vsPos = document.getElementById('textPositionVs').value;
-        const currentPos = (currentPattern === 'vs') ? vsPos : rankPos;
         const defaultCol = document.getElementById('defaultTextColor').value;
-        const defaultGlobalSize = Number(document.getElementById('globalTextSize').value) || 200;
+        const defaultPos = document.getElementById('textPosition').value;
+        const defaultFont = document.getElementById('fontFamily').value;
 
         for(let i=0; i<count; i++) {
-            buildCellWrapper(grid, i, oldData, currentPos, defaultCol, defaultGlobalSize);
+            if(oldData[i]) {
+                cellsData[i] = oldData[i];
+            } else {
+                cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, text:'', textSize:200, color:defaultCol, colorCustomized:false };
+            }
+
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            
+            const placeholder = document.createElement('div');
+            placeholder.className = 'placeholder';
+            placeholder.textContent = '+';
+            cell.appendChild(placeholder);
+
+            const textPreview = document.createElement('div');
+            textPreview.className = `cell-text-preview pos-${defaultPos}`;
+            textPreview.textContent = cellsData[i].text;
+            textPreview.style.fontFamily = defaultFont;
+            const col = cellsData[i].color || defaultCol;
+            textPreview.style.color = col;
+            updateTextShadow(textPreview, col);
+            textPreview.style.display = cellsData[i].text ? 'block' : 'none';
+            
+            const basePx = getCellPx();
+            textPreview.style.fontSize = (cellsData[i].textSize * (basePx / 1500)) + 'px';
+            cellsData[i].textPreview = textPreview;
+            cell.appendChild(textPreview);
+
+            if(cellsData[i].img && cellsData[i].canvas) {
+                placeholder.style.display = 'none';
+                cell.appendChild(cellsData[i].canvas);
+                draw(i);
+            }
+
+            setupCellEvents(cell, i);
+            grid.appendChild(cell);
         }
-        updateFontPreview();
         updateVsOverlays();
     }
 
-    function buildCellWrapper(grid, i, oldData, currentPos, defaultCol, defaultGlobalSize) {
-        if(oldData[i]) {
-            cellsData[i] = oldData[i];
-        } else {
-            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null, imgUrl:null, text:'', textSize: defaultGlobalSize, sizeCustomized: false, color: defaultCol, colorCustomized: false, selected:false };
-        }
-        cellsData[i].selected = false;
-        
-        const wrapper = document.createElement('div');
-        wrapper.className = 'cell-wrapper';
-        if(i === firstSwapIndex && isSwapMode) wrapper.classList.add('selected');
-
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        
-        const placeholder = document.createElement('div');
-        placeholder.className = 'placeholder';
-        placeholder.textContent = '+';
-        if(cellsData[i].img) placeholder.style.display = 'none';
-        cell.appendChild(placeholder);
-
-        const btnGroup = document.createElement('div');
-        btnGroup.className = 'cell-btn-group';
-
-        const replaceBtn = document.createElement('button');
-        replaceBtn.className = 'cell-action-btn';
-        replaceBtn.textContent = cellsData[i].img ? '画像変更' : '画像選択';
-        replaceBtn.onclick = (e) => {
+    function setupCellEvents(cell, i) {
+        cell.addEventListener('click', (e) => {
             e.stopPropagation();
-            targetIndexForSingle = i;
-            triggerFileSelectForSingle();
-        };
-        btnGroup.appendChild(replaceBtn);
-        cell.appendChild(btnGroup);
-
-        const textPreview = document.createElement('div');
-        textPreview.className = `cell-text-preview pos-${currentPos}`;
-        textPreview.textContent = cellsData[i].text;
-        const currentCellColor = cellsData[i].color || defaultCol;
-        textPreview.style.color = currentCellColor;
-        updateTextShadow(textPreview, currentCellColor);
-        textPreview.style.display = (cellsData[i].text) ? 'block' : 'none';
-        cellsData[i].textPreview = textPreview;
-        
-        const basePx = getCellPx();
-        const customSize = Number(cellsData[i].textSize);
-        const fontSize = (customSize > 0) ? (customSize * (basePx / 1500)) : (basePx * 0.08);
-        textPreview.style.fontSize = fontSize + 'px';
-        cell.appendChild(textPreview);
-
-        if(cellsData[i].img) {
-            cell.appendChild(cellsData[i].canvas);
-            cellsData[i].canvas.style.display = 'block';
-        }
-
-        wrapper.appendChild(cell);
-
-        const extUi = document.createElement('div');
-        extUi.className = 'cell-external-ui';
-
-        const tabRow = document.createElement('div');
-        tabRow.className = 'mode-tab-row';
-
-        const tabText = document.createElement('button');
-        tabText.className = 'mode-tab-btn active';
-        tabText.textContent = '文字入力モード';
-
-        const tabImage = document.createElement('button');
-        tabImage.className = 'mode-tab-btn';
-        tabImage.textContent = '画像編集モード';
-
-        tabRow.appendChild(tabText);
-        tabRow.appendChild(tabImage);
-        extUi.appendChild(tabRow);
-
-        const contentText = document.createElement('div');
-        contentText.className = 'mode-content active';
-
-        const inputRow = document.createElement('div');
-        inputRow.className = 'cell-input-row';
-
-        const textInput = document.createElement('input');
-        textInput.type = 'text';
-        textInput.className = 'cell-text-input';
-        textInput.value = cellsData[i].text;
-        textInput.placeholder = 'ここに文字を入力';
-        textInput.oninput = (e) => {
-            cellsData[i].text = e.target.value;
-            textPreview.textContent = e.target.value;
-            textPreview.style.display = (e.target.value) ? 'block' : 'none';
-        };
-
-        const sizeInput = document.createElement('input');
-        sizeInput.type = 'number';
-        sizeInput.className = 'cell-size-input';
-        sizeInput.id = `size-input-${i}`;
-        sizeInput.value = cellsData[i].textSize > 0 ? cellsData[i].textSize : defaultGlobalSize;
-        sizeInput.placeholder = 'サイズ';
-        sizeInput.oninput = (e) => {
-            const val = Number(e.target.value);
-            cellsData[i].textSize = val;
-            cellsData[i].sizeCustomized = true;
-            const fSize = (val > 0) ? (val * (basePx / 1500)) : (basePx * 0.08);
-            textPreview.style.fontSize = fSize + 'px';
-        };
-
-        const colorSelect = document.createElement('select');
-        colorSelect.className = 'cell-color-select';
-        colorSelect.dataset.index = i;
-        ['white', 'black', 'red', 'yellow'].forEach(cName => {
-            const opt = document.createElement('option');
-            opt.value = cName;
-            opt.textContent = cName === 'white' ? '白' : cName === 'black' ? '黒' : cName === 'red' ? '赤' : '黄';
-            if(cName === (cellsData[i].color || defaultCol)) opt.selected = true;
-            colorSelect.appendChild(opt);
-        });
-        colorSelect.onchange = (e) => {
-            cellsData[i].color = e.target.value;
-            cellsData[i].colorCustomized = true;
-            textPreview.style.color = e.target.value;
-            updateTextShadow(textPreview, e.target.value);
-        };
-
-        inputRow.appendChild(textInput);
-        inputRow.appendChild(sizeInput);
-        inputRow.appendChild(colorSelect);
-        contentText.appendChild(inputRow);
-        extUi.appendChild(contentText);
-
-        const contentImage = document.createElement('div');
-        contentImage.className = 'mode-content';
-
-        const cpRow = document.createElement('div');
-        cpRow.className = 'copypaste-row';
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'cell-big-btn copy-btn';
-        copyBtn.textContent = '📋 コピー';
-        copyBtn.onclick = (e) => {
-            e.stopPropagation();
-            clipboardData = {
-                img: cellsData[i].img,
-                imgUrl: cellsData[i].imgUrl,
-                x: cellsData[i].x,
-                y: cellsData[i].y,
-                scale: cellsData[i].scale,
-                canvas: cellsData[i].canvas ? cloneCanvas(cellsData[i].canvas) : null,
-                text: cellsData[i].text,
-                textSize: cellsData[i].textSize,
-                sizeCustomized: cellsData[i].sizeCustomized,
-                color: cellsData[i].color,
-                colorCustomized: cellsData[i].colorCustomized
-            };
-        };
-
-        const pasteBtn = document.createElement('button');
-        pasteBtn.className = 'cell-big-btn paste-btn';
-        pasteBtn.textContent = '📥 ペースト';
-        pasteBtn.onclick = (e) => {
-            e.stopPropagation();
-            if(!clipboardData) return;
-            
-            cellsData[i].img = clipboardData.img;
-            cellsData[i].imgUrl = clipboardData.imgUrl;
-            cellsData[i].x = clipboardData.x;
-            cellsData[i].y = clipboardData.y;
-            cellsData[i].scale = clipboardData.scale;
-            cellsData[i].canvas = clipboardData.canvas ? cloneCanvas(clipboardData.canvas) : null;
-            cellsData[i].text = clipboardData.text;
-            cellsData[i].textSize = clipboardData.textSize;
-            cellsData[i].sizeCustomized = clipboardData.sizeCustomized;
-            cellsData[i].color = clipboardData.color;
-            cellsData[i].colorCustomized = clipboardData.colorCustomized;
-
-            createCells();
-        };
-
-        cpRow.appendChild(copyBtn);
-        cpRow.appendChild(pasteBtn);
-        contentImage.appendChild(cpRow);
-        extUi.appendChild(contentImage);
-
-        tabText.onclick = (e) => {
-            e.stopPropagation();
-            tabText.classList.add('active');
-            tabImage.classList.remove('active');
-            contentText.classList.add('active');
-            contentImage.classList.remove('active');
-        };
-        tabImage.onclick = (e) => {
-            e.stopPropagation();
-            tabImage.classList.add('active');
-            tabText.classList.remove('active');
-            contentImage.classList.add('active');
-            contentText.classList.remove('active');
-        };
-
-        wrapper.appendChild(extUi);
-        setupCell(wrapper, cell, i);
-        grid.appendChild(wrapper);
-    }
-
-    function cloneCanvas(oldCanvas) {
-        const newCanvas = document.createElement('canvas');
-        newCanvas.width = oldCanvas.width;
-        newCanvas.height = oldCanvas.height;
-        newCanvas.getContext('2d').drawImage(oldCanvas, 0, 0);
-        newCanvas.style.display = 'block';
-        return newCanvas;
-    }
-
-    function setupCell(wrapper, cell, i) {
-        wrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-            
-            if(isSwapMode) {
-                if(firstSwapIndex === null) {
-                    firstSwapIndex = i;
-                    wrapper.classList.add('selected');
-                } else {
-                    swapCells(firstSwapIndex, i);
-                    firstSwapIndex = null;
-                }
-                return;
-            }
-
             if(isMultiSelectMode) {
                 const idx = selectedIndices.indexOf(i);
                 if(idx > -1) {
                     selectedIndices.splice(idx, 1);
-                    cellsData[i].selected = false;
-                    wrapper.classList.remove('selected');
+                    cell.classList.remove('selected');
                 } else {
                     selectedIndices.push(i);
-                    cellsData[i].selected = true;
-                    wrapper.classList.add('selected');
+                    cell.classList.add('selected');
                 }
                 return;
             }
 
-            document.querySelectorAll('.cell-wrapper').forEach(w => w.classList.remove('selected'));
-            wrapper.classList.add('selected');
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+            cell.classList.add('selected');
+            activeIndex = i;
+
+            // パネルに値を反映
+            const d = cellsData[i];
+            document.getElementById('panelTitle').textContent = `マス #${i+1} の編集`;
+            document.getElementById('panelTextInput').value = d.text || '';
+            document.getElementById('panelSizeInput').value = d.textSize || 200;
+            document.getElementById('panelColorSelect').value = d.color || document.getElementById('defaultTextColor').value;
+            document.getElementById('activeCellPanel').classList.add('active');
         });
-        
+
+        // ユーザの安定している画像移動・ピンチイン実装
         let isDrag = false;
         let startX = 0, startY = 0;
         let initialPinchDist = null;
         let initialScale = 1;
 
         cell.addEventListener('mousedown', (e) => {
-            if(!cellsData[i].img || isSwapMode) return;
+            if(!cellsData[i].img) return;
             isDrag = true;
             startX = e.clientX; startY = e.clientY;
             cell.classList.add('dragging');
@@ -772,7 +399,7 @@
         window.addEventListener('mouseup', () => { isDrag = false; cell.classList.remove('dragging'); });
 
         cell.addEventListener('touchstart', (e) => {
-            if(!cellsData[i].img || isSwapMode) return;
+            if(!cellsData[i].img) return;
             if(e.touches.length === 1) {
                 isDrag = true;
                 startX = e.touches[0].clientX;
@@ -780,10 +407,7 @@
                 initialPinchDist = null;
             } else if(e.touches.length === 2) {
                 isDrag = false;
-                initialPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
+                initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
                 initialScale = cellsData[i].scale;
             }
         }, {passive: true});
@@ -792,23 +416,15 @@
             if(!cellsData[i].img) return;
             const d = cellsData[i];
             const CELL_PX = getCellPx();
-
             if(e.touches.length === 1 && isDrag) {
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                d.x += currentX - startX;
-                d.y += currentY - startY;
-                startX = currentX;
-                startY = currentY;
+                const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+                d.x += cx - startX; d.y += cy - startY;
+                startX = cx; startY = cy;
                 applyConstraint(d, CELL_PX);
                 draw(i);
             } else if(e.touches.length === 2 && initialPinchDist !== null) {
-                const currentPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                const factor = currentPinchDist / initialPinchDist;
-                d.scale = initialScale * factor;
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                d.scale = initialScale * (dist / initialPinchDist);
                 applyConstraint(d, CELL_PX);
                 draw(i);
             }
@@ -818,32 +434,27 @@
             if(e.touches.length < 2) initialPinchDist = null;
             if(e.touches.length === 0) isDrag = false;
         });
-        
+
         cell.addEventListener('wheel', (e) => {
             if(!cellsData[i].img) return;
             e.preventDefault();
             const d = cellsData[i];
-            const factor = e.deltaY < 0 ? 1.1 : 0.9;
-            d.scale *= factor;
+            d.scale *= (e.deltaY < 0 ? 1.1 : 0.9);
             applyConstraint(d, getCellPx());
             draw(i);
-        }, {passive:false});
+        }, {passive: false});
     }
 
-    document.addEventListener('click', () => {
-        if(!isMultiSelectMode && !isSwapMode) {
-            document.querySelectorAll('.cell-wrapper').forEach(w => w.classList.remove('selected'));
+    function triggerFileSelectActive() {
+        if(activeIndex === null) {
+            alert('マスが選択されていません。');
+            return;
         }
-    });
-
-    function triggerFileSelectForSingle() {
-        const fileInput = document.getElementById('multiFileInput');
-        fileInput.multiple = false;
-        fileInput.onchange = (e) => {
-            const files = e.target.files;
-            if(files.length > 0) loadImage(files[0], targetIndexForSingle);
+        const input = document.getElementById('fileInput');
+        input.onchange = (e) => {
+            if(e.target.files[0]) loadImage(e.target.files[0], activeIndex);
         };
-        fileInput.click();
+        input.click();
     }
 
     function triggerBatchUpload() {
@@ -851,81 +462,30 @@
             alert('画像を入れたいマスを複数選択してください。');
             return;
         }
-        const fileInput = document.getElementById('multiFileInput');
-        fileInput.multiple = true;
-        fileInput.onchange = (e) => {
+        const input = document.getElementById('multiFileInput');
+        input.onchange = (e) => {
             const files = e.target.files;
             if(files.length === 0) return;
-            
-            const sortedIndices = [...selectedIndices].sort((a,b) => a - b);
-            for(let f = 0; f < files.length && f < sortedIndices.length; f++) {
-                loadImage(files[f], sortedIndices[f]);
+            const sorted = [...selectedIndices].sort((a,b)=>a-b);
+            for(let f=0; f<files.length && f<sorted.length; f++) {
+                loadImage(files[f], sorted[f]);
             }
-            clearSelections();
+            clearSelection();
             toggleSelectMode();
         };
-        fileInput.click();
-    }
-
-    function swapCells(i, j) {
-        const textAlso = document.getElementById('swapTextAlso').checked;
-        
-        const temp = {
-            img: cellsData[i].img,
-            imgUrl: cellsData[i].imgUrl,
-            x: cellsData[i].x,
-            y: cellsData[i].y,
-            scale: cellsData[i].scale,
-            canvas: cellsData[i].canvas,
-            text: cellsData[i].text,
-            textSize: cellsData[i].textSize,
-            color: cellsData[i].color,
-            colorCustomized: cellsData[i].colorCustomized,
-            sizeCustomized: cellsData[i].sizeCustomized
-        };
-
-        cellsData[i].img = cellsData[j].img;
-        cellsData[i].imgUrl = cellsData[j].imgUrl;
-        cellsData[i].x = cellsData[j].x;
-        cellsData[i].y = cellsData[j].y;
-        cellsData[i].scale = cellsData[j].scale;
-        cellsData[i].canvas = cellsData[j].canvas;
-
-        cellsData[j].img = temp.img;
-        cellsData[j].imgUrl = temp.imgUrl;
-        cellsData[j].x = temp.x;
-        cellsData[j].y = temp.y;
-        cellsData[j].scale = temp.scale;
-        cellsData[j].canvas = temp.canvas;
-
-        if(textAlso) {
-            cellsData[i].text = cellsData[j].text;
-            cellsData[i].textSize = cellsData[j].textSize;
-            cellsData[i].color = cellsData[j].color;
-            cellsData[i].colorCustomized = cellsData[j].colorCustomized;
-            cellsData[i].sizeCustomized = cellsData[j].sizeCustomized;
-
-            cellsData[j].text = temp.text;
-            cellsData[j].textSize = temp.textSize;
-            cellsData[j].color = temp.color;
-            cellsData[j].colorCustomized = temp.colorCustomized;
-            cellsData[j].sizeCustomized = temp.sizeCustomized;
-        }
-
-        createCells();
+        input.click();
     }
 
     function loadImage(file, i) {
         const CELL_PX = getCellPx();
         const reader = new FileReader();
         reader.onload = (e) => {
-            const imgUrl = e.target.result;
             const img = new Image();
             img.onload = () => {
                 cellsData[i].img = img;
-                cellsData[i].imgUrl = imgUrl;
+                const cell = document.getElementById('grid').children[i];
+                cell.querySelector('.placeholder').style.display = 'none';
                 
-                // 正確に1つのセル枠(CELL_PX)の短辺に画像を合わせる
                 const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
                 cellsData[i].scale = ratio;
                 cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
@@ -937,10 +497,10 @@
                 canvas.getContext('2d').drawImage(img, 0, 0);
                 canvas.style.display = 'block';
                 cellsData[i].canvas = canvas;
-                
-                createCells();
+                cell.appendChild(canvas);
+                draw(i);
             };
-            img.src = imgUrl;
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -950,7 +510,6 @@
         const imgH = d.img.height * d.scale;
         if(imgW < size) { d.scale = size / d.img.width; }
         if(imgH < size) { d.scale = size / d.img.height; }
-        
         d.x = Math.min(0, Math.max(d.x, size - (d.img.width * d.scale)));
         d.y = Math.min(0, Math.max(d.y, size - (d.img.height * d.scale)));
     }
@@ -962,72 +521,144 @@
         }
     }
 
+    // パネルからの文字変更
+    function onPanelTextInput(el) {
+        if(activeIndex === null) return;
+        const d = cellsData[activeIndex];
+        d.text = el.value;
+        if(d.textPreview) {
+            d.textPreview.textContent = d.text;
+            d.textPreview.style.display = d.text ? 'block' : 'none';
+        }
+    }
+
+    function onPanelSizeInput(el) {
+        if(activeIndex === null) return;
+        const d = cellsData[activeIndex];
+        const val = Number(el.value) || 200;
+        d.textSize = val;
+        if(d.textPreview) {
+            const basePx = getCellPx();
+            d.textPreview.style.fontSize = (val * (basePx / 1500)) + 'px';
+        }
+    }
+
+    function onPanelColorSelect(el) {
+        if(activeIndex === null) return;
+        const d = cellsData[activeIndex];
+        const col = el.value;
+        d.color = col;
+        d.colorCustomized = true;
+        if(d.textPreview) {
+            d.textPreview.style.color = col;
+            updateTextShadow(d.textPreview, col);
+        }
+    }
+
+    // 完全修正されたコピペ機能
+    function copyActiveCell() {
+        if(activeIndex === null) { alert('マスが選択されていません。'); return; }
+        const src = cellsData[activeIndex];
+        let clonedCanvas = null;
+        if(src.canvas) {
+            clonedCanvas = document.createElement('canvas');
+            clonedCanvas.width = src.canvas.width;
+            clonedCanvas.height = src.canvas.height;
+            clonedCanvas.getContext('2d').drawImage(src.canvas, 0, 0);
+            clonedCanvas.style.display = 'block';
+        }
+        clipboardData = {
+            img: src.img,
+            x: src.x,
+            y: src.y,
+            scale: src.scale,
+            canvas: clonedCanvas,
+            text: src.text,
+            textSize: src.textSize,
+            color: src.color,
+            colorCustomized: src.colorCustomized
+        };
+        alert(`マス #${activeIndex+1} の内容をコピーしました！`);
+    }
+
+    function pasteActiveCell() {
+        if(activeIndex === null) { alert('貼り付け先のマスを選択してください。'); return; }
+        if(!clipboardData) { alert('コピーされたデータがありません。'); return; }
+        const dest = cellsData[activeIndex];
+        dest.img = clipboardData.img;
+        dest.x = clipboardData.x;
+        dest.y = clipboardData.y;
+        dest.scale = clipboardData.scale;
+        dest.text = clipboardData.text;
+        dest.textSize = clipboardData.textSize;
+        dest.color = clipboardData.color;
+        dest.colorCustomized = clipboardData.colorCustomized;
+
+        if(clipboardData.canvas) {
+            if(dest.canvas) dest.canvas.remove();
+            const newC = document.createElement('canvas');
+            newC.width = clipboardData.canvas.width;
+            newC.height = clipboardData.canvas.height;
+            newC.getContext('2d').drawImage(clipboardData.canvas, 0, 0);
+            newC.style.display = 'block';
+            dest.canvas = newC;
+            const cellElem = document.getElementById('grid').children[activeIndex];
+            cellElem.querySelector('.placeholder').style.display = 'none';
+            cellElem.appendChild(newC);
+            draw(activeIndex);
+        }
+
+        if(dest.textPreview) {
+            dest.textPreview.textContent = dest.text;
+            dest.textPreview.style.display = dest.text ? 'block' : 'none';
+            dest.textPreview.style.color = dest.color;
+            updateTextShadow(dest.textPreview, dest.color);
+            const basePx = getCellPx();
+            dest.textPreview.style.fontSize = (dest.textSize * (basePx / 1500)) + 'px';
+        }
+
+        // パネルの数値も同期
+        document.getElementById('panelTextInput').value = dest.text || '';
+        document.getElementById('panelSizeInput').value = dest.textSize || 200;
+        document.getElementById('panelColorSelect').value = dest.color;
+        alert(`マス #${activeIndex+1} にペーストしました！`);
+    }
+
     function updateVsOverlays() {
         const CELL_PX = getCellPx();
         const show = (currentPattern === 'vs' && currentLayout === '3x3');
-        const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
-        const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
-        const vsFont = document.getElementById('vsFontFamily').value;
-        const vsCol = document.getElementById('vsColor').value;
-        const eqCol = document.getElementById('eqColor').value;
-
         for(let r=0; r<3; r++) {
             const vsDiv = document.getElementById(`vs-${r}`);
             const eqDiv = document.getElementById(`eq-${r}`);
-
             if(!show) {
                 vsDiv.style.display = 'none';
                 eqDiv.style.display = 'none';
                 continue;
             }
-
             vsDiv.style.display = 'flex';
             eqDiv.style.display = 'flex';
+            const size = CELL_PX * 0.45;
+            vsDiv.style.width = size + 'px'; vsDiv.style.height = size + 'px';
+            vsDiv.style.left = (1 * CELL_PX - size / 2) + 'px';
+            vsDiv.style.top = (r * CELL_PX + (CELL_PX - size) / 2) + 'px';
 
-            const vsSize = CELL_PX * 0.45 * vsScale;
-            const eqSize = CELL_PX * 0.45 * eqScale;
+            eqDiv.style.width = size + 'px'; eqDiv.style.height = size + 'px';
+            eqDiv.style.left = (2 * CELL_PX - size / 2) + 'px';
+            eqDiv.style.top = (r * CELL_PX + (CELL_PX - size) / 2) + 'px';
 
-            vsDiv.style.width = vsSize + 'px';
-            vsDiv.style.height = vsSize + 'px';
-            vsDiv.style.left = (1 * CELL_PX - vsSize / 2) + 'px';
-            vsDiv.style.top = (r * CELL_PX + (CELL_PX - vsSize) / 2) + 'px';
-
-            eqDiv.style.width = eqSize + 'px';
-            eqDiv.style.height = eqSize + 'px';
-            eqDiv.style.left = (2 * CELL_PX - eqSize / 2) + 'px';
-            eqDiv.style.top = (r * CELL_PX + (CELL_PX - eqSize) / 2) + 'px';
-
-            const vsInput = vsDiv.querySelector('input');
-            const eqInput = eqDiv.querySelector('input');
-            vsInput.style.fontFamily = vsFont;
-            eqInput.style.fontFamily = vsFont;
-            vsInput.style.fontSize = (vsSize * 0.75) + 'px';
-            vsInput.style.color = vsCol;
-            eqInput.style.fontSize = (eqSize * 0.75) + 'px';
-            eqInput.style.color = eqCol;
-
-            vsInput.style.textShadow = (vsCol === 'black') 
-                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff'
-                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000';
-            
-            eqInput.style.textShadow = (eqCol === 'black')
-                ? '-1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff'
-                : '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000';
+            vsDiv.querySelector('input').style.fontSize = (size * 0.75) + 'px';
+            eqDiv.querySelector('input').style.fontSize = (size * 0.75) + 'px';
         }
-        updateFontPreview();
     }
 
     function generateHighResImage() {
         const outputCellSize = 1500;
-        const count = 3;
-        const bgCol = '#fff';
-        
+        const count = currentLayout === '3x3' ? 3 : 2;
         const canvas = document.createElement('canvas');
-        canvas.width = outputCellSize * count;
-        canvas.height = outputCellSize * count;
+        canvas.width = canvas.height = outputCellSize * count;
         const ctx = canvas.getContext('2d');
         
-        ctx.fillStyle = bgCol;
+        ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const CELL_PX = getCellPx();
@@ -1051,15 +682,11 @@
                 ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
                 ctx.drawImage(d.img, 0, 0);
                 ctx.restore();
-            } else {
-                ctx.fillStyle = bgCol;
-                ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
             }
 
             if(d.text) {
                 ctx.save();
-                const customSize = Number(d.textSize);
-                let fontSize = (customSize > 0) ? (customSize * scaleRatio) : (outputCellSize * 0.08);
+                const fontSize = (d.textSize ? d.textSize : 200) * scaleRatio;
                 ctx.font = 'bold ' + fontSize + 'px ' + selectedFont;
                 const textColor = d.color || document.getElementById('defaultTextColor').value;
                 ctx.fillStyle = textColor;
@@ -1069,12 +696,9 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                const rankPos = document.getElementById('textPosition').value;
-                const vsPos = document.getElementById('textPositionVs').value;
-                const textPos = (currentPattern === 'vs') ? vsPos : rankPos;
-
+                const textPos = document.getElementById('textPosition').value;
                 let textX = destX + outputCellSize / 2;
-                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.5) : (destY + outputCellSize / 2);
+                let textY = (textPos === 'bottom') ? (destY + outputCellSize - fontSize * 1.2) : (destY + outputCellSize / 2);
 
                 ctx.strokeText(d.text, textX, textY);
                 ctx.fillText(d.text, textX, textY);
@@ -1083,43 +707,26 @@
         });
 
         if(currentPattern === 'vs' && currentLayout === '3x3') {
-            const vsScale = parseFloat(document.getElementById('vsSizeInput').value) || 1.0;
-            const eqScale = parseFloat(document.getElementById('eqSizeInput').value) || 1.0;
-            const vsFont = document.getElementById('vsFontFamily').value;
-            const vsCol = document.getElementById('vsColor').value;
-            const eqCol = document.getElementById('eqColor').value;
-            
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-
+            const vsFont = document.getElementById('fontFamily').value;
             for(let r=0; r<3; r++) {
                 const vsInput = document.getElementById(`vs-${r}`).querySelector('input').value;
                 const eqInput = document.getElementById(`eq-${r}`).querySelector('input').value;
 
                 if(vsInput) {
-                    const vsFontSize = outputCellSize * 0.3 * vsScale;
-                    ctx.font = 'bold ' + vsFontSize + 'px ' + vsFont;
-                    const x = 1 * outputCellSize;
-                    const y = (r * outputCellSize) + (outputCellSize / 2);
-
-                    ctx.strokeStyle = (vsCol === 'black') ? '#ffffff' : '#000000';
-                    ctx.lineWidth = Math.max(6, vsFontSize * 0.15);
-                    ctx.strokeText(vsInput, x, y);
-                    ctx.fillStyle = vsCol;
-                    ctx.fillText(vsInput, x, y);
+                    const fontSize = outputCellSize * 0.3;
+                    ctx.font = 'bold ' + fontSize + 'px ' + vsFont;
+                    const x = 1 * outputCellSize, y = (r * outputCellSize) + (outputCellSize / 2);
+                    ctx.strokeStyle = '#000000'; ctx.lineWidth = Math.max(6, fontSize * 0.15);
+                    ctx.strokeText(vsInput, x, y); ctx.fillStyle = '#ffffff'; ctx.fillText(vsInput, x, y);
                 }
-
                 if(eqInput) {
-                    const eqFontSize = outputCellSize * 0.3 * eqScale;
-                    ctx.font = 'bold ' + eqFontSize + 'px ' + vsFont;
-                    const x = 2 * outputCellSize;
-                    const y = (r * outputCellSize) + (outputCellSize / 2);
-
-                    ctx.strokeStyle = (eqCol === 'black') ? '#ffffff' : '#000000';
-                    ctx.lineWidth = Math.max(6, eqFontSize * 0.15);
-                    ctx.strokeText(eqInput, x, y);
-                    ctx.fillStyle = eqCol;
-                    ctx.fillText(eqInput, x, y);
+                    const fontSize = outputCellSize * 0.3;
+                    ctx.font = 'bold ' + fontSize + 'px ' + vsFont;
+                    const x = 2 * outputCellSize, y = (r * outputCellSize) + (outputCellSize / 2);
+                    ctx.strokeStyle = '#000000'; ctx.lineWidth = Math.max(6, fontSize * 0.15);
+                    ctx.strokeText(eqInput, x, y); ctx.fillStyle = '#ffffff'; ctx.fillText(eqInput, x, y);
                 }
             }
         }
