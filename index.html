@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wiki作成・編集用</title>
+    <title>Wiki作成・編集補助ツール</title>
     <style>
         body {
             font-family: sans-serif;
@@ -44,7 +44,7 @@
             height: 120px;
             resize: vertical;
         }
-        button {
+        button.action-btn {
             background-color: #007bff;
             color: white;
             border: none;
@@ -53,26 +53,32 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        button:hover {
+        button.action-btn:hover {
             background-color: #0056b3;
         }
+        /* --- 選択肢（候補ボタン）のデザイン（背景白・文字黒） --- */
         .candidate {
             display: block;
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            margin-bottom: 5px;
+            padding: 12px 15px;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 6px;
             cursor: pointer;
             text-align: left;
-            background: #fff;
-            border-radius: 4px;
+            background: #ffffff; /* 背景：白 */
+            color: #000000;     /* 文字：黒 */
+            font-size: 1rem;
+            border-radius: 6px;
+            transition: background 0.15s, border-color 0.15s;
         }
         .candidate:hover {
-            background: #eef;
+            background: #f1f5f9; /* マウスを乗せたとき：薄いグレー */
+            border-color: #94a3b8;
         }
         #results {
             max-height: 250px;
             overflow-y: auto;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -80,10 +86,10 @@
 
     <!-- 機能1：括弧の形式変換 -->
     <div class="card">
-        <h1>1. なろう括弧の形式変換ツール</h1>
+        <h1>1. なろう括弧形式変換ツール</h1>
         <p class="description">例: <code>＜思念通信リークス＞</code> を <code>《思念通信》(リークス)</code> に一括変換します。</p>
         <textarea id="bracketInput" placeholder="ここに変換したいテキストを入力（複数行可）"></textarea>
-        <button onclick="convertBrackets()">変換してコピー</button>
+        <button class="action-btn" onclick="convertBrackets()">変換してコピー</button>
     </div>
 
     <!-- 機能2：Wikiリンク生成 -->
@@ -103,7 +109,7 @@
             const lines = input.split('\n');
             
             const convertedLines = lines.map(line => {
-                return line.replace(/[＜［\[（(【『「]([^＞］］）y』」]+)[＞］］）y』」]/g, (match, innerText) => {
+                return line.replace(/[＜［\[（(【『「]([^＞］］）』」]+)[＞］］）』」]/g, (match, innerText) => {
                     const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
                     if (matchKana) {
                         return `《${matchKana[1]}》(${matchKana[2]})`;
@@ -117,9 +123,8 @@
             alert('変換してクリップボードにコピーしました！\n\n' + resultText);
         }
 
-
         // ==========================================
-        // 機能2：名前リンク生成のスクリプト（全リスト搭載）
+        // 機能2：名前リンク生成のスクリプト（データ）
         // ==========================================
         const nameData = [
             // 種族・世界・組織など
@@ -162,9 +167,8 @@
 
             // キャラクター（主要人物）
             { key: "アイシャ", val: "アイシャ" },
+            { key: "アノス・ヴォルディゴード", val: "アノス・ヴォルディゴード(二千年前)" },
             { key: "アノス・ヴォルディゴード", val: "アノス・ヴォルディゴード" },
-            { key: "アノス・ヴォルディゴード(二千年前)", val: "アノス・ヴォルディゴード(二千年前)" },
-            { key: "イージェス", val: "イージェス・コード" },
             { key: "イージェス・コード", val: "イージェス・コード" },
             { key: "イザベラ", val: "イザベラ・（ライゼオ）・ヴォルディゴード" },
             { key: "エールドメード", val: "エールドメード・ディティジョン" },
@@ -178,7 +182,7 @@
             { key: "ナーヤ", val: "ナーヤ" },
             { key: "ファリス", val: "ファリス・ノイン" },
             { key: "ミーシャ", val: "ミーシャ・ネクロン" },
-            { key: "ミサ", val: "ミサ・レグリア(ミサ・イリオローグ)" },
+            { key: "ミサ・イリオローグ", val: "ミサ・レグリア(ミサ・イリオローグ)" },
             { key: "ミサ・レグリア", val: "ミサ・レグリア(ミサ・イリオローグ)" },
             { key: "レイ", val: "レイ・グランズドリィ" },
             { key: "エレン", val: "エレン・ミハイス" },
@@ -522,30 +526,7 @@
         ];
 
         // ==========================================
-        // 機能1：括弧変換のスクリプト
-        // ==========================================
-        function convertBrackets() {
-            const input = document.getElementById('bracketInput').value;
-            const lines = input.split('\n');
-            
-            const convertedLines = lines.map(line => {
-                return line.replace(/[＜［\[（(【『「]([^＞］］）y』」]+)[＞］］）y』」]/g, (match, innerText) => {
-                    const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
-                    if (matchKana) {
-                        return `《${matchKana[1]}》(${matchKana[2]})`;
-                    }
-                    return `《${innerText}》`;
-                });
-            });
-            
-            const resultText = convertedLines.join('\n');
-            navigator.clipboard.writeText(resultText);
-            alert('変換してクリップボードにコピーしました！\n\n' + resultText);
-        }
-
-
-        // ==========================================
-        // 機能2：名前リンク生成のスクリプト
+        // 機能2：名前リンク生成のスクリプト（処理）
         // ==========================================
         function updateList() {
             const input = document.getElementById('searchInput').value.trim();
