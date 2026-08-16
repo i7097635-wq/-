@@ -2,141 +2,70 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>括弧の形式変換ツール</title>
+    <title>Wikiリンク生成ツール</title>
     <style>
-        body {
-            font-family: sans-serif;
-            max-width: 800px;
-            margin: 30px auto;
-            padding: 20px;
-            background-color: #f9f9f9;
-            color: #333;
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        .container { max-width: 600px; margin: auto; }
+        input { width: 100%; padding: 10px; font-size: 1rem; box-sizing: border-box; }
+        #results { margin-top: 20px; }
+        .candidate { 
+            display: block; padding: 10px; border-bottom: 1px solid #eee; 
+            cursor: pointer; background: #fff; text-align: left; width: 100%; border: none;
         }
-        h1 {
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-        }
-        p.description {
-            font-size: 0.9rem;
-            color: #666;
-            margin-bottom: 20px;
-        }
-        .container {
-            display: flex;
-            gap: 20px;
-            flex-direction: column;
-        }
-        @media(min-width: 600px) {
-            .container {
-                flex-direction: row;
-            }
-        }
-        .box {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        label {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        textarea {
-            width: 100%;
-            height: 200px;
-            padding: 10px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-        .button-area {
-            text-align: center;
-            margin: 15px 0;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .copy-btn {
-            background-color: #28a745;
-            margin-top: 5px;
-        }
-        .copy-btn:hover {
-            background-color: #218838;
-        }
+        .candidate:hover { background: #f0f0f0; }
+        .copy-hint { color: #666; font-size: 0.8rem; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>括弧の形式変換ツール</h1>
-    <p class="description">例: <code>＜思念通信リークス＞</code> を <code>《思念通信》(リークス)</code> に変換します（カタカナ部分を後ろの丸括弧に分離します）。</p>
+<div class="container">
+    <h2>Wikiリンク生成</h2>
+    <input type="text" id="searchInput" placeholder="名前の一部を入力..." oninput="updateCandidates()">
+    <div id="results"></div>
+</div>
 
-    <div class="container">
-        <div class="box">
-            <label for="input-text">変換前（入力）</label>
-            <textarea id="input-text" placeholder="例:
-＜思念通信リークス＞"></textarea>
-        </div>
-        
-        <div class="box">
-            <label for="output-text">変換後（出力）</label>
-            <textarea id="output-text" placeholder="ここに結果が表示されます" readonly></textarea>
-            <button class="copy-btn" onclick="copyToClipboard()">結果をコピー</button>
-        </div>
-    </div>
+<script>
+    // 【編集はこちら】ここに正式名称を追加してください
+    const nameList = [
+        "魔族", "魔王族", "皇魔族", "ツェイロンの魔族", "人間", "神族", "精霊", "半霊半魔", "半人半魔", "半神半魔",
+        "竜人", "子竜", "幻魔族", "幻獣", "城魔族", "転生世界ミリティア", "魔界", "魔族の国ディルヘイド",
+        "魔王学院デルゾゲード", "ログノース魔法医院", "地下迷宮ゴラヌヘリア", "人間界", "アゼシオン",
+        "インズエル", "王都ガイラディーテ", "勇者学院アルクランイスカ", "精霊界", "精霊の学舎",
+        "神々の蒼穹", "地底世界", "王竜の国アガハ", "神竜の国ジオルダル", "聖都ガエラヘスタ",
+        "神代の学府エーベラストアンゼッタ", "覇竜の国ガデイシオラ", "アイシャ", "アノス・ヴォルディゴード"
+        // 必要に応じてここに追加してください
+    ];
 
-    <div class="button-area">
-        <button onclick="convertText()">変換する</button>
-    </div>
+    function updateCandidates() {
+        const input = document.getElementById('searchInput').value;
+        const results = document.getElementById('results');
+        results.innerHTML = '';
 
-    <script>
-        function convertText() {
-            const input = document.getElementById('input-text').value;
-            const lines = input.split('\n');
-            
-            const convertedLines = lines.map(line => {
-                // ＜ または [ などの括弧で囲まれた中身をキャプチャする正規表現
-                // 例: ＜思念通信リークス＞ から 「思念通信リークス」 を取り出す
-                return line.replace(/[＜［\[（(【『「]([^＞］］）)】』」]+)[＞］］）)】』」]/g, (match, innerText) => {
-                    
-                    // 中身の文字列から、末尾に続く「連続するカタカナ（長音符や中黒含む）」を抽出する正規表現
-                    // 例: 「思念通信リークス」 -> 前半「思念通信」、後半「リークス」
-                    // ※カタカナ、長音(ー)、中黒(・)、スペース等をカタカナ判定に含める
-                    const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
-                    
-                    if (matchKana) {
-                        const kanjiPart = matchKana[1]; // 漢字など（または漢字+ひらがな等）
-                        const kanaPart = matchKana[2];   // カタカナ部分
-                        
-                        // 《漢字》 (カタカナ) の形に組み立てる
-                        return `《${kanjiPart}》(${kanaPart})`;
-                    }
-                    
-                    // カタカナが綺麗に分離できない場合はそのまま返す（または 《》 で囲む）
-                    return `《${innerText}》`;
-                });
-            });
-            
-            document.getElementById('output-text').value = convertedLines.join('\n');
-        }
+        if (!input) return;
 
-        function copyToClipboard() {
-            const outputText = document.getElementById('output-text');
-            outputText.select();
-            document.execCommand('copy');
-            alert('クリップボードにコピーしました！');
-        }
-    </script>
+        // 一致する候補を探す
+        const matches = nameList.filter(name => name.includes(input));
+
+        // リストに一致するものがある場合
+        matches.forEach(name => {
+            addResultButton(input, name);
+        });
+
+        // リストにない場合や、あえてそのままコピーしたい場合のための選択肢
+        addResultButton(input, input);
+    }
+
+    function addResultButton(input, formalName) {
+        const btn = document.createElement('button');
+        btn.className = 'candidate';
+        btn.innerHTML = `[[${input}>${formalName}]]`;
+        btn.onclick = () => {
+            navigator.clipboard.writeText(`[[${input}>${formalName}]]`);
+            alert(`コピーしました: [[${input}>${formalName}]]`);
+        };
+        document.getElementById('results').appendChild(btn);
+    }
+</script>
 
 </body>
 </html>
