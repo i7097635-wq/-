@@ -1,248 +1,143 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>正方形コラージュメーカー</title>
-<style>
-    body { font-family: sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-    .controls { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: flex; gap: 10px; }
-    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-    #editor-container { box-shadow: 0 4px 10px rgba(0,0,0,0.2); background: black; line-height: 0; }
-    .grid { display: grid; gap: 0px; }
-    .grid.layout-3x3 { grid-template-columns: repeat(3, 100px); grid-template-rows: repeat(3, 100px); }
-    .grid.layout-2x2 { grid-template-columns: repeat(2, 150px); grid-template-rows: repeat(2, 150px); }
-    @media (min-width: 600px) {
-        .grid.layout-3x3 { grid-template-columns: repeat(3, 200px); grid-template-rows: repeat(3, 200px); }
-        .grid.layout-2x2 { grid-template-columns: repeat(2, 300px); grid-template-rows: repeat(2, 300px); }
-    }
-    .cell { background-color: #ddd; position: relative; overflow: hidden; cursor: grab; user-select: none; touch-action: none; /* スマホで勝手にスクロールするのを防ぐ最重要設定 */ }
-    .cell.dragging { cursor: grabbing; }
-    .placeholder { pointer-events: none; color: #999; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; font-size: 1.2rem; }
-    .cell canvas { position: absolute; top: 0; left: 0; display: none; transform-origin: 0 0; }
-    #saveBtn { background: #28a745; color: white; padding: 15px 30px; border-radius: 50px; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; font-size: 1rem; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>括弧の形式変換ツール</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        p.description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-direction: column;
+        }
+        @media(min-width: 600px) {
+            .container {
+                flex-direction: row;
+            }
+        }
+        .box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        .button-area {
+            text-align: center;
+            margin: 15px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .copy-btn {
+            background-color: #28a745;
+            margin-top: 5px;
+        }
+        .copy-btn:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
 <body>
 
-<h1>コラージュメーカー</h1>
-<div class="controls">
-    <button onclick="setLayout('3x3')">3x3</button>
-    <button onclick="setLayout('2x2')">2x2</button>
-    <button onclick="location.reload()">リセット</button>
-</div>
-<p style="font-size: 0.85rem; color: #666; text-align: center;">📱 1本指で移動 / 2本指でピンチイン・アウト(拡大縮小)</p>
+    <h1>括弧の形式変換ツール</h1>
+    <p class="description">例: <code>＜思念通信リークス＞</code> を <code>《思念通信》(リークス)</code> に変換します（カタカナ部分を後ろの丸括弧に分離します）。</p>
 
-<div id="editor-container">
-    <div id="grid" class="grid layout-3x3"></div>
-</div>
-<button id="saveBtn" onclick="generateHighResImage()">高画質で保存 (PNG)</button>
+    <div class="container">
+        <div class="box">
+            <label for="input-text">変換前（入力）</label>
+            <textarea id="input-text" placeholder="例:
+＜思念通信リークス＞
+＜完全名称カタカナダケ＞"></textarea>
+        </div>
+        
+        <div class="box">
+            <label for="output-text">変換後（出力）</label>
+            <textarea id="output-text" placeholder="ここに結果が表示されます" readonly></textarea>
+            <button class="copy-btn" onclick="copyToClipboard()">結果をコピー</button>
+        </div>
+    </div>
 
-<script>
-    let currentLayout = '3x3';
-    let cellsData = [];
-    
-    function getCellPx() {
-        return window.innerWidth >= 600 ? 200 : (currentLayout === '3x3' ? 100 : 150);
-    }
+    <div class="button-area">
+        <button onclick="convertText()">変換する</button>
+    </div>
 
-    function setLayout(type) {
-        currentLayout = type;
-        document.getElementById('grid').className = `grid layout-${type}`;
-        createCells();
-    }
-
-    function createCells() {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = '';
-        const count = currentLayout === '3x3' ? 9 : 4;
-        cellsData = [];
-        for(let i=0; i<count; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'cell';
-            cell.innerHTML = `<div class="placeholder">+</div>`;
-            cellsData[i] = { img:null, x:0, y:0, scale:1, canvas:null };
-            setupCell(cell, i);
-            grid.appendChild(cell);
+    <script>
+        function convertText() {
+            const input = document.getElementById('input-text').value;
+            const lines = input.split('\n');
+            
+            const convertedLines = lines.map(line => {
+                // ＜ または [ などの括弧で囲まれた中身をキャプチャする正規表現
+                // 例: ＜思念通信リークス＞ から 「思念通信リークス」 を取り出す
+                return line.replace(/[＜［\[（(【『「]([^＞］］）)】』」]+)[＞］］）)】』」]/g, (match, innerText) => {
+                    
+                    // 中身の文字列から、末尾に続く「連続するカタカナ（長音符や中黒含む）」を抽出する正規表現
+                    // 例: 「思念通信リークス」 -> 前半「思念通信」、後半「リークス」
+                    // ※カタカナ、長音(ー)、中黒(・)、スペース等をカタカナ判定に含める
+                    const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
+                    
+                    if (matchKana) {
+                        const kanjiPart = matchKana[1]; // 漢字など（または漢字+ひらがな等）
+                        const kanaPart = matchKana[2];   // カタカナ部分
+                        
+                        // 《漢字》 (カタカナ) の形に組み立てる
+                        return `《${kanjiPart}》(${kanaPart})`;
+                    }
+                    
+                    // カタカナが綺麗に分離できない場合はそのまま返す（または 《》 で囲む）
+                    return `《${innerText}》`;
+                });
+            });
+            
+            document.getElementById('output-text').value = convertedLines.join('\n');
         }
-    }
 
-    function setupCell(cell, i) {
-        cell.addEventListener('click', (e) => {
-            if(cellsData[i].img) return;
-            const input = document.createElement('input');
-            input.type = 'file'; input.accept = 'image/*';
-            input.onchange = (e) => {
-                if(e.target.files[0]) loadImage(e.target.files[0], i, cell);
-            };
-            input.click();
-        });
-        
-        let isDrag = false;
-        let startX = 0, startY = 0;
-        let initialPinchDist = null;
-        let initialScale = 1;
+        function copyToClipboard() {
+            const outputText = document.getElementById('output-text');
+            outputText.select();
+            document.execCommand('copy');
+            alert('クリップボードにコピーしました！');
+        }
+    </script>
 
-        cell.addEventListener('mousedown', (e) => {
-            if(!cellsData[i].img) return;
-            isDrag = true;
-            startX = e.clientX; startY = e.clientY;
-            cell.classList.add('dragging');
-        });
-        window.addEventListener('mousemove', (e) => {
-            if(!isDrag || !cellsData[i].img) return;
-            const d = cellsData[i];
-            d.x += e.clientX - startX;
-            d.y += e.clientY - startY;
-            startX = e.clientX;
-            startY = e.clientY;
-            applyConstraint(d, getCellPx());
-            draw(i);
-        });
-        window.addEventListener('mouseup', () => { isDrag = false; cell.classList.remove('dragging'); });
-
-        cell.addEventListener('touchstart', (e) => {
-            if(!cellsData[i].img) return;
-            if(e.touches.length === 1) {
-                isDrag = true;
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                initialPinchDist = null;
-            } else if(e.touches.length === 2) {
-                isDrag = false;
-                initialPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                initialScale = cellsData[i].scale;
-            }
-        }, {passive: true});
-
-        cell.addEventListener('touchmove', (e) => {
-            if(!cellsData[i].img) return;
-            const d = cellsData[i];
-            const CELL_PX = getCellPx();
-
-            if(e.touches.length === 1 && isDrag) {
-                const currentX = e.touches[0].clientX;
-                const currentY = e.touches[0].clientY;
-                d.x += currentX - startX;
-                d.y += currentY - startY;
-                startX = currentX;
-                startY = currentY;
-                applyConstraint(d, CELL_PX);
-                draw(i);
-            } else if(e.touches.length === 2 && initialPinchDist !== null) {
-                const currentPinchDist = Math.hypot(
-                    e.touches[0].clientX - e.touches[1].clientX,
-                    e.touches[0].clientY - e.touches[1].clientY
-                );
-                const factor = currentPinchDist / initialPinchDist;
-                d.scale = initialScale * factor;
-                applyConstraint(d, CELL_PX);
-                draw(i);
-            }
-        }, {passive: true});
-
-        cell.addEventListener('touchend', (e) => {
-            if(e.touches.length < 2) initialPinchDist = null;
-            if(e.touches.length === 0) isDrag = false;
-        });
-        
-        cell.addEventListener('wheel', (e) => {
-            if(!cellsData[i].img) return;
-            e.preventDefault();
-            const d = cellsData[i];
-            const factor = e.deltaY < 0 ? 1.1 : 0.9;
-            d.scale *= factor;
-            applyConstraint(d, getCellPx());
-            draw(i);
-        }, {passive:false});
-    }
-
-    function loadImage(file, i, cell) {
-        const CELL_PX = getCellPx();
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                cellsData[i].img = img;
-                cell.querySelector('.placeholder').style.display = 'none';
-                const ratio = Math.max(CELL_PX / img.width, CELL_PX / img.height);
-                cellsData[i].scale = ratio;
-                cellsData[i].x = (CELL_PX - img.width * ratio) / 2;
-                cellsData[i].y = (CELL_PX - img.height * ratio) / 2;
-                
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width; canvas.height = img.height;
-                canvas.getContext('2d').drawImage(img, 0, 0);
-                canvas.style.display = 'block';
-                cellsData[i].canvas = canvas;
-                cell.appendChild(canvas);
-                draw(i);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function applyConstraint(d, size) {
-        const imgW = d.img.width * d.scale;
-        const imgH = d.img.height * d.scale;
-        if(imgW < size) { d.scale = size / d.img.width; }
-        if(imgH < size) { d.scale = size / d.img.height; }
-        
-        d.x = Math.min(0, Math.max(d.x, size - (d.img.width * d.scale)));
-        d.y = Math.min(0, Math.max(d.y, size - (d.img.height * d.scale)));
-    }
-
-    function draw(i) {
-        const d = cellsData[i];
-        d.canvas.style.transform = `translate(${d.x}px, ${d.y}px) scale(${d.scale})`;
-    }
-
-    function generateHighResImage() {
-        const outputCellSize = 1500;
-        const count = currentLayout === '3x3' ? 3 : 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = outputCellSize * count;
-        const ctx = canvas.getContext('2d');
-        
-        const CELL_PX = getCellPx();
-
-        cellsData.forEach((d, i) => {
-            const destCol = i % count;
-            const destRow = Math.floor(i / count);
-            const destX = destCol * outputCellSize;
-            const destY = destRow * outputCellSize;
-
-            if(!d.img) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(destX, destY, outputCellSize, outputCellSize);
-                return;
-            }
-
-            const scaleRatio = outputCellSize / CELL_PX;
-
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(destX, destY, outputCellSize, outputCellSize);
-            ctx.clip();
-
-            ctx.translate(destX + (d.x * scaleRatio), destY + (d.y * scaleRatio));
-            ctx.scale(d.scale * scaleRatio, d.scale * scaleRatio);
-
-            ctx.drawImage(d.img, 0, 0);
-            ctx.restore();
-        });
-
-        const link = document.createElement('a');
-        link.download = `collage_${currentLayout}_${Date.now()}.png`;
-        link.href = canvas.toDataURL('image/png', 1.0);
-        link.click();
-    }
-
-    createCells();
-</script>
 </body>
 </html>
