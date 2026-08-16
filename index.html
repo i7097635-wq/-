@@ -2,70 +2,582 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Wikiリンク生成ツール</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki作成・編集用</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
-        .container { max-width: 600px; margin: auto; }
-        input { width: 100%; padding: 10px; font-size: 1rem; box-sizing: border-box; }
-        #results { margin-top: 20px; }
-        .candidate { 
-            display: block; padding: 10px; border-bottom: 1px solid #eee; 
-            cursor: pointer; background: #fff; text-align: left; width: 100%; border: none;
+        body {
+            font-family: sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.5;
         }
-        .candidate:hover { background: #f0f0f0; }
-        .copy-hint { color: #666; font-size: 0.8rem; margin-top: 10px; }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+        h1 {
+            font-size: 1.4rem;
+            margin-top: 0;
+            color: #0056b3;
+        }
+        p.description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+        textarea {
+            height: 120px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .candidate {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            cursor: pointer;
+            text-align: left;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .candidate:hover {
+            background: #eef;
+        }
+        #results {
+            max-height: 250px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Wikiリンク生成</h2>
-    <input type="text" id="searchInput" placeholder="名前の一部を入力..." oninput="updateCandidates()">
-    <div id="results"></div>
-</div>
+    <!-- 機能1：括弧の形式変換 -->
+    <div class="card">
+        <h1>1. なろう括弧の形式変換ツール</h1>
+        <p class="description">例: <code>＜思念通信リークス＞</code> を <code>《思念通信》(リークス)</code> に一括変換します。</p>
+        <textarea id="bracketInput" placeholder="ここに変換したいテキストを入力（複数行可）"></textarea>
+        <button onclick="convertBrackets()">変換してコピー</button>
+    </div>
 
-<script>
-    // 【編集はこちら】ここに正式名称を追加してください
-    const nameList = [
-        "魔族", "魔王族", "皇魔族", "ツェイロンの魔族", "人間", "神族", "精霊", "半霊半魔", "半人半魔", "半神半魔",
-        "竜人", "子竜", "幻魔族", "幻獣", "城魔族", "転生世界ミリティア", "魔界", "魔族の国ディルヘイド",
-        "魔王学院デルゾゲード", "ログノース魔法医院", "地下迷宮ゴラヌヘリア", "人間界", "アゼシオン",
-        "インズエル", "王都ガイラディーテ", "勇者学院アルクランイスカ", "精霊界", "精霊の学舎",
-        "神々の蒼穹", "地底世界", "王竜の国アガハ", "神竜の国ジオルダル", "聖都ガエラヘスタ",
-        "神代の学府エーベラストアンゼッタ", "覇竜の国ガデイシオラ", "アイシャ", "アノス・ヴォルディゴード"
-        // 必要に応じてここに追加してください
-    ];
+    <!-- 機能2：Wikiリンク生成 -->
+    <div class="card">
+        <h1>2. Wikiリンク生成ツール</h1>
+        <p class="description">名前やキーワードの一部を入力すると、紐づいた正式名称で <code>[[入力>正式名称]]</code> を生成します。リストにない言葉でもそのまま出力できます。</p>
+        <input type="text" id="searchInput" placeholder="名前やキーワードを入力..." oninput="updateList()">
+        <div id="results"></div>
+    </div>
 
-    function updateCandidates() {
-        const input = document.getElementById('searchInput').value;
-        const results = document.getElementById('results');
-        results.innerHTML = '';
+    <script>
+        // ==========================================
+        // 機能1：括弧変換のスクリプト
+        // ==========================================
+        function convertBrackets() {
+            const input = document.getElementById('bracketInput').value;
+            const lines = input.split('\n');
+            
+            const convertedLines = lines.map(line => {
+                return line.replace(/[＜［\[（(【『「]([^＞］］）y』」]+)[＞］］）y』」]/g, (match, innerText) => {
+                    const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
+                    if (matchKana) {
+                        return `《${matchKana[1]}》(${matchKana[2]})`;
+                    }
+                    return `《${innerText}》`;
+                });
+            });
+            
+            const resultText = convertedLines.join('\n');
+            navigator.clipboard.writeText(resultText);
+            alert('変換してクリップボードにコピーしました！\n\n' + resultText);
+        }
 
-        if (!input) return;
 
-        // 一致する候補を探す
-        const matches = nameList.filter(name => name.includes(input));
+        // ==========================================
+        // 機能2：名前リンク生成のスクリプト（全リスト搭載）
+        // ==========================================
+        const nameData = [
+            // 種族・世界・組織など
+            { key: "魔族", val: "魔族" },
+            { key: "魔王族", val: "魔王族" },
+            { key: "皇魔族", val: "皇魔族" },
+            { key: "ツェイロンの魔族", val: "ツェイロンの魔族" },
+            { key: "人間", val: "人間" },
+            { key: "神族", val: "神族" },
+            { key: "精霊", val: "精霊" },
+            { key: "半霊半魔", val: "半霊半魔" },
+            { key: "半人半魔", val: "半人半魔" },
+            { key: "半神半魔", val: "半神半魔" },
+            { key: "竜人", val: "竜人" },
+            { key: "子竜", val: "子竜" },
+            { key: "幻魔族", val: "幻魔族" },
+            { key: "幻獣", val: "幻獣" },
+            { key: "城魔族", val: "城魔族" },
+            { key: "転生世界ミリティア", val: "転生世界ミリティア" },
+            { key: "魔界", val: "魔界" },
+            { key: "魔族の国ディルヘイド", val: "魔族の国ディルヘイド" },
+            { key: "魔王学院デルゾゲード", val: "魔王学院デルゾゲード" },
+            { key: "ログノース魔法医院", val: "ログノース魔法医院" },
+            { key: "地下迷宮ゴラヌヘリア", val: "地下迷宮ゴラヌヘリア" },
+            { key: "人間界", val: "人間界" },
+            { key: "アゼシオン", val: "アゼシオン" },
+            { key: "インズエル", val: "インズエル" },
+            { key: "王都ガイラディーテ", val: "王都ガイラディーテ" },
+            { key: "勇者学院アルクランイスカ", val: "勇者学院アルクランイスカ" },
+            { key: "精霊界", val: "精霊界" },
+            { key: "精霊の学舎", val: "精霊の学舎" },
+            { key: "神界", val: "神々の蒼穹" },
+            { key: "神々の蒼穹", val: "神々の蒼穹" },
+            { key: "地底世界", val: "地底世界" },
+            { key: "王竜の国アガハ", val: "王竜の国アガハ" },
+            { key: "神竜の国ジオルダル", val: "神竜の国ジオルダル" },
+            { key: "聖都ガエラヘスタ", val: "聖都ガエラヘスタ" },
+            { key: "神代の学府エーベラストアンゼッタ", val: "神代の学府エーベラストアンゼッタ" },
+            { key: "覇竜の国ガデイシオラ", val: "覇竜の国ガデイシオラ" },
 
-        // リストに一致するものがある場合
-        matches.forEach(name => {
-            addResultButton(input, name);
-        });
+            // キャラクター（主要人物）
+            { key: "アイシャ", val: "アイシャ" },
+            { key: "アノス", val: "アノス・ヴォルディゴード" },
+            { key: "アノス・ヴォルディゴード", val: "アノス・ヴォルディゴード" },
+            { key: "イージェス", val: "イージェス・コード" },
+            { key: "イージェス・コード", val: "イージェス・コード" },
+            { key: "イザベラ", val: "イザベラ・（ライゼオ）・ヴォルディゴード" },
+            { key: "エールドメード", val: "エールドメード・ディティジョン" },
+            { key: "エレオノール", val: "エレオノール・ビアンカ" },
+            { key: "エンネスオーネ", val: "エンネスオーネ" },
+            { key: "グスタ", val: "グスタ・（ライゼオ）・ヴォルディゴード" },
+            { key: "サーシャ", val: "サーシャ・ネクロン" },
+            { key: "シン", val: "シン・レグリア" },
+            { key: "ゼシア", val: "ゼシア・ビアンカ" },
+            { key: "トモグイ", val: "トモグイ" },
+            { key: "ナーヤ", val: "ナーヤ" },
+            { key: "ファリス", val: "ファリス・ノイン" },
+            { key: "ミーシャ", val: "ミーシャ・ネクロン" },
+            { key: "ミサ", val: "ミサ・レグリア(ミサ・イリオローグ)" },
+            { key: "ミサ・レグリア", val: "ミサ・レグリア(ミサ・イリオローグ)" },
+            { key: "レイ", val: "レイ・グランズドリィ" },
+            { key: "エレン", val: "エレン・ミハイス" },
+            { key: "カーサ", val: "カーサ・クルノア" },
+            { key: "ゲラド", val: "ゲラド・アレズマ" },
+            { key: "ザブロ", val: "ザブロ・ゲーズ" },
+            { key: "シア", val: "シア・ミンシュン" },
+            { key: "ジェシカ", val: "ジェシカ・アーネート" },
+            { key: "シェリア", val: "シェリア・ニジェム" },
+            { key: "ノノ", val: "ノノ・イノータ" },
+            { key: "ヒムカ", val: "ヒムカ・ホウラ" },
+            { key: "マイア", val: "マイア・ゼムト" },
+            { key: "二番", val: "二番" },
+            { key: "二番(七億年前)", val: "二番(七億年前)" },
+            { key: "エリオ", val: "エリオ・ルードウェル" },
+            { key: "カイヒラム", val: "カイヒラム・ジステ" },
+            { key: "ギリシリス", val: "ギリシリス・デッロ" },
+            { key: "グラハム", val: "グラハム" },
+            { key: "クルト", val: "クルト・ルードウェル" },
+            { key: "ジーク", val: "ジーク・オズマ" },
+            { key: "一番", val: "一番" },
+            { key: "一番(七億年前)", val: "一番(七億年前)" },
+            { key: "四番", val: "四番" },
+            { key: "四番(七億年前)", val: "四番(七億年前)" },
+            { key: "三番", val: "三番" },
+            { key: "三番(七億年前)", val: "三番(七億年前)" },
+            { key: "セリス", val: "セリス・ヴォルディゴード" },
+            { key: "セリス・ヴォルディゴード", val: "セリス・ヴォルディゴード" },
+            { key: "セリス(七億年前)", val: "セリス・ヴォルディゴード(七億年前)" },
+            { key: "ゼルセアス", val: "ゼルセアス・アンガート" },
+            { key: "デビドラ", val: "デビドラ" },
+            { key: "デミル", val: "デミル・グラハ" },
+            { key: "ニギッド", val: "ニギッド" },
+            { key: "ニヒド", val: "ニヒド" },
+            { key: "ネオン", val: "ネオン・アーメルカ" },
+            { key: "ノール", val: "ノール・ドルフモンド" },
+            { key: "五番", val: "五番" },
+            { key: "バルマン", val: "バルマン" },
+            { key: "ボミラス", val: "ボミラス・へロス" },
+            { key: "ボロス", val: "ボロス" },
+            { key: "マドラ", val: "マドラ・シェンソン" },
+            { key: "メリア", val: "メリア" },
+            { key: "メリッサ", val: "メリッサ・ノマド" },
+            { key: "リーザ", val: "リーザ" },
+            { key: "リンカ", val: "リンカ・セオウルネス" },
+            { key: "ルーシェ", val: "ルーシェ" },
+            { key: "レドアネ", val: "レドアネ・イオン" },
+            { key: "ゼペス", val: "ゼペス・インドゥ" },
+            { key: "ラモン", val: "ラモン・アイバー" },
+            { key: "リオルグ", val: "リオルグ・インドゥ" },
+            { key: "アラミス", val: "アラミス・エルティモ" },
+            { key: "リーベスト", val: "リーベスト・エイニー" },
+            { key: "エミリア・ルードウェル", val: "エミリア・ルードウェル" },
+            { key: "メノウ", val: "メノウ・ヒーストリア" },
+            { key: "アイヴィス", val: "アイヴィス・ネクロン" },
+            { key: "イドル", val: "イドル・アンゼオ" },
+            { key: "エルドラ", val: "エルドラ・ザイア" },
+            { key: "ガイオス", val: "ガイオス・アンゼム" },
+            { key: "ゾロ", val: "ゾロ・アンガート" },
+            { key: "メドイン", val: "メドイン・ガーサ" },
+            { key: "メルヘイス", val: "メルヘイス・ボラン" },
+            { key: "エミリア", val: "エミリア" },
+            { key: "ディエゴ", val: "ディエゴ・カノン・イジェシカ" },
+            { key: "ハイネ", val: "ハイネ・イオルグ" },
+            { key: "ラオス", val: "ラオス・ジルフォー" },
+            { key: "レドリアーノ", val: "レドリアーノ・アゼスチェン" },
+            { key: "お団子ヘアのゼシア", val: "お団子ヘアのゼシア" },
+            { key: "シニヨンのゼシア", val: "シニヨンのゼシア" },
+            { key: "ゼシア・カノン・イジェイシカ", val: "ゼシア・カノン・イジェイシカ" },
+            { key: "セミロングのゼシア", val: "セミロングのゼシア" },
+            { key: "対になったリボンをしたゼシア", val: "対になったリボンをしたゼシア" },
+            { key: "ポニーテールのゼシア", val: "ポニーテールのゼシア" },
 
-        // リストにない場合や、あえてそのままコピーしたい場合のための選択肢
-        addResultButton(input, input);
-    }
+            // 人間・その他関係者
+            { key: "イガレス", val: "イガレス・イジェシカ" },
+            { key: "エルウィン", val: "エルウィン" },
+            { key: "エンリケ", val: "エンリケ" },
+            { key: "カシム", val: "カシム" },
+            { key: "カテナス", val: "カテナス" },
+            { key: "カノン", val: "カノン" },
+            { key: "ザミラ", val: "ザミラ・エンゲロ・ガイラディーテ" },
+            { key: "シヴァル", val: "シヴァル" },
+            { key: "ジェイク", val: "ジェイク" },
+            { key: "ジェルガ", val: "ジェルガ" },
+            { key: "シャプス", val: "シャプス" },
+            { key: "ジョン", val: "ジョン・エンゲロ" },
+            { key: "髭面の厳つい男", val: "髭面の厳つい男" },
+            { key: "勇者グラハム", val: "勇者グラハム" },
+            { key: "ロイド", val: "ロイド" },
+            { key: "フラン", val: "フラン" },
+            { key: "アノウエ", val: "アノウエ" },
+            { key: "ティティ", val: "ティティ" },
+            { key: "ジェンヌル", val: "ジェンヌル" },
+            { key: "ミゲロノフ", val: "ミゲロノフ" },
+            { key: "ギガデアズ", val: "ギガデアズ" },
+            { key: "イーヤン", val: "イーヤン" },
+            { key: "エニユニエン", val: "エニユニエン" },
+            { key: "ティルムンク", val: "ティルムンク" },
+            { key: "エゼッセイ", val: "エゼッセイ" },
+            { key: "ジスラ", val: "ジスラ" },
+            { key: "エルトニカ", val: "エルトニカ" },
+            { key: "エピテオ", val: "エピテオ" },
+            { key: "ペンタン", val: "ペンタン" },
+            { key: "アハルトヘルン", val: "アハルトヘルン" },
+            { key: "セネテロ", val: "セネテロ" },
+            { key: "デードイリッヒ", val: "デードイリッヒ" },
+            { key: "レノ", val: "レノ" },
+            { key: "ビーラ", val: "ビーラ" },
+            { key: "リーラン", val: "リーラン" },
+            { key: "リニヨン", val: "リニヨン" },
+            { key: "バブロアナ", val: "バブロアナ" },
+            { key: "メト", val: "メト" },
+            { key: "ポポロン", val: "ポポロン" },
+            { key: "溶岩の死人", val: "溶岩の死人" },
+            { key: "ガウイーレ", val: "ガウイーレ" },
+            { key: "ジジェイク", val: "ジジェイク" },
+            { key: "ヴォルドヴァイゼン", val: "ヴォルドヴァイゼン" },
+            { key: "エンネテトロン", val: "エンネテトロン" },
+            { key: "アミシュウス", val: "アミシュウス" },
+            { key: "アガンゾン", val: "アガンゾン" },
+            { key: "ウェズネーラ", val: "ウェズネーラ" },
+            { key: "ペルペドロ", val: "ペルペドロ" },
+            { key: "リーノローロス", val: "リーノローロス" },
+            { key: "ガルムグンド", val: "ガルムグンド" },
+            { key: "リーバルシュネッド", val: "リーバルシュネッド" },
+            { key: "アナヘム", val: "アナヘム" },
+            { key: "ガロム", val: "ガロム" },
+            { key: "デュボラ", val: "デュボラ" },
+            { key: "ドルゾォーク", val: "ドルゾォーク" },
+            { key: "ディルフレッド", val: "ディルフレッド" },
+            { key: "アフラシアータ", val: "アフラシアータ" },
+            { key: "エルラリエロム", val: "エルラリエロム" },
+            { key: "ウィンゼル", val: "ウィンゼル" },
+            { key: "ベベウス", val: "ベベウス" },
+            { key: "エクエス", val: "エクエス" },
+            { key: "ミリティア", val: "ミリティア" },
+            { key: "シュネルデ", val: "シュネルデ" },
+            { key: "アンデルク", val: "アンデルク" },
+            { key: "ノウスガリア", val: "ノウスガリア" },
+            { key: "ギュテナロス", val: "ギュテナロス" },
+            { key: "カテナアミラ", val: "カテナアミラ" },
+            { key: "ゲヌドゥヌブ", val: "ゲヌドゥヌブ" },
+            { key: "アベルニユー", val: "アベルニユー" },
+            { key: "フロイズアテネ", val: "フロイズアテネ" },
+            { key: "アウスラビア", val: "アウスラビア" },
+            { key: "ガルヴァドリオン", val: "ガルヴァドリオン" },
+            { key: "ジャネルドフォック", val: "ジャネルドフォック" },
+            { key: "ヘイルジエンド", val: "ヘイルジエンド" },
+            { key: "ナフタ", val: "ナフタ" },
+            { key: "ミラヒ", val: "ミラヒ・イデ・ジズム" },
+            { key: "エヌス", val: "エヌス・ネ・メス" },
+            { key: "ヌテラ", val: "ヌテラ・ド・ヒアナ" },
+            { key: "アトロ", val: "アトロ・ゼ・シスターヴァ" },
+            { key: "ゼオ", val: "ゼオ・ラ・オプト" },
+            { key: "レーズ", val: "レーズ・ナ・イール" },
+            { key: "ヴェネ", val: "ヴェネ・ゼ・ラヴェール" },
+            { key: "エウゴ", val: "エウゴ・ラ・ラヴィアズ" },
+            { key: "エグズ", val: "エグズ・ド・ラファン" },
+            { key: "リエノ", val: "リエノ・ガ・ロアズ" },
+            { key: "グエン", val: "グエン" },
+            { key: "アヒデ", val: "アヒデ・アロボ・アガーツェ" },
+            { key: "イリーナ", val: "イリーナ・アルス・アミナ" },
+            { key: "ヴィアフレア", val: "ヴィアフレア・ウィプス・ガデイシオラ" },
+            { key: "ガゼル", val: "ガゼル・アプト・アゲイラ" },
+            { key: "ゲッツ", val: "ゲッツ" },
+            { key: "ゴルロアナ", val: "ゴルロアナ・デロ・ジオルダル" },
+            { key: "ディードリッヒ", val: "ディードリッヒ・クレイツェン・アガハ" },
+            { key: "ディアス", val: "ディアス・アロンド" },
+            { key: "シルヴィア", val: "シルヴィア・アービシャス" },
+            { key: "ネイト", val: "ネイト・アンミリオン" },
+            { key: "ボルディノス", val: "ボルディノス" },
+            { key: "ミラノ", val: "ミラノ・エム・シサラド" },
+            { key: "メティス", val: "メティス" },
+            { key: "リカルド", val: "リカルド・アービシャス" },
 
-    function addResultButton(input, formalName) {
-        const btn = document.createElement('button');
-        btn.className = 'candidate';
-        btn.innerHTML = `[[${input}>${formalName}]]`;
-        btn.onclick = () => {
-            navigator.clipboard.writeText(`[[${input}>${formalName}]]`);
-            alert(`コピーしました: [[${input}>${formalName}]]`);
-        };
-        document.getElementById('results').appendChild(btn);
-    }
-</script>
+            // 竜・その他
+            { key: "蒼き異竜", val: "蒼き異竜" },
+            { key: "赤き異竜", val: "赤き異竜" },
+            { key: "王竜", val: "王竜" },
+            { key: "巨頭竜", val: "巨頭竜" },
+            { key: "黒竜", val: "黒竜" },
+            { key: "白き異竜", val: "白き異竜" },
+            { key: "真紅の竜", val: "真紅の竜" },
+            { key: "神竜", val: "神竜" },
+            { key: "力竜", val: "力竜" },
+            { key: "覇竜", val: "覇竜" },
+            { key: "ヴォイド", val: "ヴォイド" },
+            { key: "黄金の獅子シリウス", val: "黄金の獅子シリウス" },
+            { key: "シーラ", val: "シーラ・グランズドリィ" },
+            { key: "神鳥フェニックス", val: "神鳥フェニックス" },
+            { key: "タソガレガイコ", val: "タソガレガイコ" },
+            { key: "魔鯨ディラヘミル", val: "魔鯨ディラヘミル" },
+            { key: "魔糸竜", val: "魔糸竜" },
+            { key: "猛角牛", val: "猛角牛" },
+            { key: "リシウス", val: "リシウス・エンゲロ・ガイラーディーテ" },
+
+            // 各種世界・そこの住人
+            { key: "羽化世界オルドローブ", val: "羽化世界オルドローブ" },
+            { key: "シューザ", val: "シューザ・オルドローブ" },
+            { key: "フレネイア", val: "フレネイア" },
+            { key: "絵画世界アプトミステ", val: "絵画世界アプトミステ" },
+            { key: "バファディ", val: "バファディ" },
+            { key: "ルーゼット", val: "ルーゼット" },
+            { key: "傀儡世界ルツェンドフォルト", val: "傀儡世界ルツェンドフォルト" },
+            { key: "パリントン", val: "パリントン・アネッサ" },
+            { key: "ベズ", val: "ベズ" },
+            { key: "鍛冶世界バーディルーア", val: "鍛冶世界バーディルーア" },
+            { key: "シルク", val: "シルク・ミューラー" },
+            { key: "ベラミー", val: "ベラミー・スタンダッド" },
+            { key: "絡繰世界デボロスタ", val: "絡繰世界デボロスタ" },
+            { key: "アイゼル", val: "アイゼル" },
+            { key: "ヴラド", val: "ヴラド" },
+            { key: "エルガンデ", val: "エルガンデ" },
+            { key: "絡繰神", val: "絡繰神" },
+            { key: "グライム", val: "グラハム" },
+            { key: "ドミエル", val: "ドミエル" },
+            { key: "願望世界ラーヴァシュネイク", val: "願望世界ラーヴァシュネイク" },
+            { key: "水上都市リプロアーニ", val: "水上都市リプロアーニ" },
+            { key: "アムル", val: "アムル・ヴィーウィザー" },
+            { key: "デュエルニーガ", val: "デュエルニーガ" },
+            { key: "ムルガ", val: "ムルガ" },
+            { key: "鬼刃世界ミヒャイム", val: "鬼刃世界ミヒャイム" },
+            { key: "アゼミ", val: "アゼミ・リゼツ" },
+            { key: "マギマ", val: "マギマ" },
+            { key: "擬態世界ライメニ", val: "擬態世界ライメニ" },
+            { key: "ヴィアン", val: "ヴィアン" },
+            { key: "教育世界ローデンヌ", val: "教育世界ローデンヌ" },
+            { key: "カルラ", val: "カルラ" },
+            { key: "銀城世界バランディアス", val: "銀城世界バランディアス" },
+            { key: "カルゼン", val: "カルゼン・エルミナク" },
+            { key: "カルティナス", val: "カルティナス・イルベナ" },
+            { key: "ザイモン", val: "ザイモン・エパラ" },
+            { key: "メイティレン", val: "メイティレン" },
+            { key: "銀水世界リステリア", val: "銀水世界リステリア" },
+            { key: "エルミデ", val: "エルミデ" },
+            { key: "オットルルー", val: "オットルルー" },
+            { key: "銀海クジラ", val: "銀海クジラ" },
+            { key: "吟遊世界ウィスプウェンズ", val: "吟遊世界ウィスプウェンズ" },
+            { key: "イリヤ", val: "イリヤ・パッセル" },
+            { key: "エルム", val: "エルム・ローレイト" },
+            { key: "シータ", val: "シータ・メルン" },
+            { key: "シャオ", val: "シャオ・ナクレ" },
+            { key: "ソナタ", val: "ソナタ" },
+            { key: "ナオ", val: "ナオ" },
+            { key: "ベルン", val: "ベルン" },
+            { key: "ミレイ", val: "ミレイ" },
+            { key: "リンファ", val: "リンファ・アシス" },
+            { key: "ロドウェル", val: "ロドウェル" },
+            { key: "ダンカン", val: "ダンカン" },
+            { key: "古書世界ゼオルム", val: "古書世界ゼオルム" },
+            { key: "聖書神", val: "聖書神" },
+            { key: "個別世界グラウヴェノア", val: "個別世界グラウヴェノア" },
+            { key: "ジゼル", val: "ジゼル" },
+            { key: "ミネア", val: "ミネア" },
+            { key: "災淵世界イーヴェゼイノ", val: "災淵世界イーヴェゼイノ" },
+            { key: "アーツェノンの滅びの獅子", val: "アーツェノンの滅びの獅子" },
+            { key: "蒼猫", val: "蒼猫" },
+            { key: "朱猫", val: "朱猫" },
+            { key: "イザーク", val: "イザーク" },
+            { key: "ガーベラ", val: "ガーベラ" },
+            { key: "懐胎の鳳凰", val: "懐胎の鳳凰" },
+            { key: "コーストリア", val: "コーストリア・アーツェノン" },
+            { key: "ジェルドヌゥラ", val: "ジェルドヌゥラ" },
+            { key: "ゼーヴァドローン", val: "ゼーヴァドローン" },
+            { key: "ドミニク", val: "ドミニク・アーツェノン" },
+            { key: "ナーガ", val: "ナーガ・アーツェノン" },
+            { key: "ボボンガ", val: "ボボンガ・アーツェノン" },
+            { key: "ルナ", val: "ルナ・アーツェノン" },
+            { key: "思念世界ライニーエリオン", val: "思念世界ライニーエリオン" },
+            { key: "ドネルド", val: "ドネルド・ヘブニッチ" },
+            { key: "呪歌世界ディメディオン", val: "呪歌世界ディメディオン" },
+            { key: "ボイズ", val: "ボイズ" },
+            { key: "震動世界バルドンアデネス", val: "震動世界バルドンアデネス" },
+            { key: "ジョズ", val: "ジョズ" },
+            { key: "支配世界デビロアス", val: "支配世界デビロアス" },
+            { key: "ガーガリ", val: "ガーガリ" },
+            { key: "瘴気世界ヒンズボル", val: "瘴気世界ヒンズボル" },
+            { key: "ガオウ", val: "ガオウ" },
+            { key: "人馬世界", val: "人馬世界" },
+            { key: "エルヴィナ", val: "エルヴィナ" },
+            { key: "水算世界サイライナ", val: "水算世界サイライナ" },
+            { key: "リアナプリナ", val: "リアナプリナ" },
+            { key: "ディオナテク", val: "ディオナテク" },
+            { key: "聖句世界アズラベン", val: "聖句世界アズラベン" },
+            { key: "ベルマス", val: "ベルマス・ファザット" },
+            { key: "ラグー", val: "ラグー" },
+            { key: "聖剣世界ハイフォリア", val: "聖剣世界ハイフォリア" },
+            { key: "アルフォンス", val: "アルフォンス" },
+            { key: "ウォーザーク", val: "ウォーザーク" },
+            { key: "エイフェ", val: "エイフェ" },
+            { key: "オルドフ", val: "オルドフ・ハインエル" },
+            { key: "ガルンゼスト", val: "ガルンゼスト" },
+            { key: "ジェイン", val: "ジェイン・アンチェス" },
+            { key: "ジャミル", val: "ジャミル・アンチェス" },
+            { key: "ノエイン", val: "ノエイン" },
+            { key: "バルツァロンド", val: "バルツァロンド・フレネロス" },
+            { key: "パルム", val: "パルム" },
+            { key: "フレアドール", val: "フレアドール" },
+            { key: "ホーネット", val: "ホーネット・クルトン" },
+            { key: "レオウルフ", val: "レオウルフ" },
+            { key: "レッグハイム", val: "レッグハイム" },
+            { key: "レブラハルド", val: "レブラハルド・ハインエル" },
+            { key: "聖川世界リブラヒルム", val: "聖川世界リブラヒルム" },
+            { key: "ヒース", val: "ヒース・トニア" },
+            { key: "停滞世界ザガロ", val: "停滞世界ザガロ" },
+            { key: "ジェイム", val: "ジェイム" },
+            { key: "粉塵世界パリビーリャ", val: "粉塵世界パリビーリャ" },
+            { key: "アガネ", val: "アガネ" },
+            { key: "リップ", val: "リップ・クルテン" },
+            { key: "魔炎世界ラジアス", val: "魔炎世界ラジアス" },
+            { key: "ドルフィン", val: "ドルフィン・グロウ" },
+            { key: "魔眼世界ゴーズヘッド", val: "魔眼世界ゴーズヘッド" },
+            { key: "ジニア", val: "ジニア・シーヴァヘルド" },
+            { key: "ゼムズガルド", val: "ゼムズガルド" },
+            { key: "魔弾世界エレネシア", val: "魔弾世界エレネシア" },
+            { key: "アビニカ", val: "アビニカ・ガモン" },
+            { key: "エレネシア", val: "エレネシア" },
+            { key: "オードゥス", val: "オードゥス" },
+            { key: "エイゼット", val: "エイゼット・アビル" },
+            { key: "ガウス", val: "ガウス・ジスロー" },
+            { key: "ギー", val: "ギー・アンバレッド" },
+            { key: "コルクス", val: "コルクス・ファイオン" },
+            { key: "ジジ", val: "ジジ・ジェーンズ" },
+            { key: "ジェイミー", val: "ジェイミー・セロ" },
+            { key: "ゼン", val: "ゼン・ボウス" },
+            { key: "テルネス", val: "テルネス" },
+            { key: "ネロ", val: "ネロ・フォース" },
+            { key: "ビリジア", val: "ビリジア・ヒリス" },
+            { key: "ボイジャー", val: "ボイジャー・アロット" },
+            { key: "レゲロ", val: "レゲロ・ファーミー" },
+            { key: "夢想世界フォールフォーラル", val: "夢想世界フォールフォーラル" },
+            { key: "ノーズ", val: "ノーズ" },
+            { key: "無神大陸", val: "無神大陸" },
+            { key: "ノア", val: "ノア" },
+            { key: "ホルセフィ", val: "ホルセフィ" },
+            { key: "ロンクルス", val: "ロンクルス・ゼイバット" },
+            { key: "融合世界ボルムテッド", val: "融合世界ボルムテッド" },
+            { key: "マルクス", val: "マルクス" },
+            { key: "ガジラ", val: "ガジラ" },
+            { key: "ムトー", val: "ムトー" }
+        ];
+
+        // ==========================================
+        // 機能1：括弧変換のスクリプト
+        // ==========================================
+        function convertBrackets() {
+            const input = document.getElementById('bracketInput').value;
+            const lines = input.split('\n');
+            
+            const convertedLines = lines.map(line => {
+                return line.replace(/[＜［\[（(【『「]([^＞］］）y』」]+)[＞］］）y』」]/g, (match, innerText) => {
+                    const matchKana = innerText.match(/^(.*?)([ァ-ヶー・\s]+)$/);
+                    if (matchKana) {
+                        return `《${matchKana[1]}》(${matchKana[2]})`;
+                    }
+                    return `《${innerText}》`;
+                });
+            });
+            
+            const resultText = convertedLines.join('\n');
+            navigator.clipboard.writeText(resultText);
+            alert('変換してクリップボードにコピーしました！\n\n' + resultText);
+        }
+
+
+        // ==========================================
+        // 機能2：名前リンク生成のスクリプト
+        // ==========================================
+        function updateList() {
+            const input = document.getElementById('searchInput').value.trim();
+            const results = document.getElementById('results');
+            results.innerHTML = '';
+            if (!input) return;
+
+            // キーワード（key）または正式名称（val）の一部に一致するものを検索
+            const matches = nameData.filter(d => d.key.includes(input) || d.val.includes(input));
+            
+            // 一致した候補をボタンとして表示
+            matches.forEach(d => {
+                addBtn(input, d.val);
+            });
+
+            // リストに完全一致するものがない場合や、入力した文字をそのまま使いたい場合のために追加
+            if (!matches.some(d => d.val === input)) {
+                addBtn(input, input);
+            }
+        }
+
+        function addBtn(input, formalName) {
+            const btn = document.createElement('button');
+            btn.className = 'candidate';
+            btn.innerText = `[[${input}>${formalName}]]`;
+            btn.onclick = () => {
+                navigator.clipboard.writeText(`[[${input}>${formalName}]]`);
+                alert("コピーしました: " + `[[${input}>${formalName}]]`);
+            };
+            results.appendChild(btn);
+        }
+    </script>
 
 </body>
 </html>
