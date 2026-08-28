@@ -2,15 +2,58 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Notepad - 簡易メモ</title>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f4f4f4; color: #333; }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .controls { margin-bottom: 15px; display: flex; gap: 10px; }
-        input[type="text"] { flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 16px; font-size: 14px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        iframe { width: 100%; height: 600px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+        body { 
+            font-family: sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            background: #f4f4f4; 
+            color: #333; 
+            box-sizing: border-box;
+        }
+        .container { 
+            max-width: 100%; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 15px; 
+            border-radius: 6px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        h2 { font-size: 18px; margin-top: 0; }
+        .controls { 
+            margin-bottom: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
+        input[type="url"], input[type="text"] { 
+            width: 100%; 
+            padding: 10px; 
+            font-size: 16px; /* スマホでズームされないサイズ */
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            box-sizing: border-box;
+        }
+        button { 
+            padding: 10px 16px; 
+            font-size: 16px; 
+            background: #007bff; 
+            color: #fff; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            width: 100%;
+        }
+        button:active { background: #0056b3; }
+        iframe { 
+            width: 100%; 
+            height: 70vh; /* スマホの画面の高さに合わせて調整 */
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+            background: #fff; 
+        }
     </style>
 </head>
 <body>
@@ -18,7 +61,7 @@
 <div class="container">
     <h2>メモ帳アプリ</h2>
     <div class="controls">
-        <input type="text" id="urlInput" placeholder="URLを入力 (例: https://example.com)">
+        <input type="url" id="urlInput" placeholder="URLを入力 (例: example.com)" inputmode="url" autocapitalize="none">
         <button onclick="openSite()">開く</button>
     </div>
     <iframe id="displayFrame"></iframe>
