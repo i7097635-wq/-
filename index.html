@@ -22,12 +22,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         h2 { font-size: 18px; margin-top: 0; }
-        .controls { 
-            margin-bottom: 12px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
-        }
         input[type="url"] { 
             width: 100%; 
             padding: 10px; 
@@ -35,18 +29,8 @@
             border: 1px solid #ccc; 
             border-radius: 4px; 
             box-sizing: border-box;
+            margin-bottom: 12px;
         }
-        button { 
-            padding: 10px 16px; 
-            font-size: 16px; 
-            background: #007bff; 
-            color: #fff; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            width: 100%;
-        }
-        button:active { background: #0056b3; }
         iframe { 
             width: 100%; 
             height: 70vh; 
@@ -60,32 +44,23 @@
 
 <div class="container">
     <h2>メモ帳アプリ</h2>
-    <form id="siteForm" onsubmit="loadSite(event)">
-        <div class="controls">
-            <input type="url" id="urlInput" placeholder="URLを入力 (例: https://example.com)" required>
-            <button type="submit">開く</button>
-        </div>
-    </form>
+    <input type="url" id="urlInput" placeholder="URLを入力・貼り付けすると自動で表示" inputmode="url" autocapitalize="none">
     <iframe id="displayFrame"></iframe>
 </div>
 
 <script>
-    function loadSite(e) {
-        e.preventDefault();
-        let input = document.getElementById('urlInput').value.trim();
-        if (!input) return;
-        
-        if (!input.startsWith('http://') && !input.startsWith('https://')) {
-            input = 'https://' + input;
-        }
+    const urlInput = document.getElementById('urlInput');
+    const displayFrame = document.getElementById('displayFrame');
 
-        const frame = document.getElementById('displayFrame');
-        try {
-            frame.src = input;
-        } catch (err) {
-            window.location.href = input;
+    urlInput.addEventListener('input', function() {
+        let val = urlInput.value.trim();
+        if (val.length > 3 && (val.includes('.') || val.startsWith('http'))) {
+            if (!val.startsWith('http://') && !val.startsWith('https://')) {
+                val = 'https://' + val;
+            }
+            displayFrame.src = val;
         }
-    }
+    });
 </script>
 
 </body>
