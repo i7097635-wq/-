@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>作品クイズツール</title>
+    <title>魔王学院の不適合者クイズ</title>
     <style>
         body {
             font-family: sans-serif;
@@ -70,7 +70,7 @@
 <body>
 
     <div class="card" id="setupScreen">
-        <h1>作品クイズ設定</h1>
+        <h1>作魔王学院の不適合者クイズ</h1>
         <div class="form-group">
             <label>難易度選択</label>
             <select id="diffSelect">
@@ -160,22 +160,22 @@
     // 【例1：記述式問題の書き方】
     { 
         type: "desc",                               // 記述式は "desc"
-        question: "1巻の主人公の名前は？",            // 問題文
-        answer: "アノス",                           // 正解の答え
+        question: "1主人公のフルネームは？",            // 問題文
+        answer: "アノス・ヴォルディゴード",                           // 正解の答え
         range: "1巻",                               // 出題範囲（※選択肢にある名称）
         difficulty: "簡単",                         // 難易度（簡単 / 普通 / 難しい）
-        explanation: "魔王アノス・ヴォルディゴードです。" // 解説
+        explanation: "常識です。" // 解説
     },
 
     // 【例2：選択問題の書き方】
     { 
         type: "choice",                             // 選択式は "choice"
-        question: "2巻で登場する最初の試練の相手は？", // 問題文
-        choices: ["ゼペス", "リーバ", "アイヴィス", "メルへス"], // 選択肢の配列（いくつでもOK）
-        answer: "ゼペス",                           // 選択肢の中にある「正解のテキスト」
-        range: "2巻",                               // 出題範囲
-        difficulty: "普通",                         // 難易度
-        explanation: "皇魔族のゼペス・インドゥです。" // 解説
+        question: "作者である秋の読み方は？", // 問題文
+        choices: ["アキ", "シュウ", "とき", "読みはない"], // 選択肢の配列（いくつでもOK）
+        answer: "しゅう",                           // 選択肢の中にある「正解のテキスト」
+        range: "その他（アンソロジー、画集、ラジオ、イベント、Xなど）",                               // 出題範囲
+        difficulty: "簡単",                         // 難易度
+        explanation: "秋さんも忘れており、打ち合わせの際はアキですと言ってしまったことがあるそう。" // 解説
     }
 ];
 
