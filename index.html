@@ -2,17 +2,18 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>魔王学院の不適合者クイズ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>作品クイズツール</title>
     <style>
         body {
             font-family: sans-serif;
             max-width: 650px;
-            margin: 30px auto;
-            padding: 20px;
+            margin: 20px auto;
+            padding: 15px;
             background-color: #f4f4f9;
             color: #333;
             line-height: 1.5;
+            -webkit-tap-highlight-color: transparent; /* タップ時のハイライトを抑制して快適に */
         }
         .card {
             background: #fff;
@@ -26,23 +27,39 @@
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
         select, input[type="text"] {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             font-size: 1rem;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
+            background-color: #fff;
         }
         button {
             width: 100%;
             background-color: #007bff;
             color: white;
             border: none;
-            padding: 12px;
+            padding: 14px;
             font-size: 1rem;
             border-radius: 4px;
             cursor: pointer;
+            margin-top: 8px;
+            touch-action: manipulation; /* スマホでのタップ遅延を防ぎ反応を良くする */
         }
-        button:hover { background-color: #0056b3; }
+        button:active { opacity: 0.8; }
+        .choice-btn {
+            background-color: #e2e8f0;
+            color: #1e293b;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border: 1px solid #cbd5e1;
+            text-align: left;
+            padding: 12px 15px;
+        }
+        .choice-btn:hover { background-color: #cbd5e1; }
+        .skip-btn {
+            background-color: #6c757d;
+        }
         .hidden { display: none !important; }
         .feedback { margin-top: 15px; padding: 12px; border-radius: 4px; }
         .correct { background-color: #d4edda; color: #155724; }
@@ -110,12 +127,18 @@
         <div class="progress" id="progressText">第 1 問 / 全 10 問</div>
         <p style="font-size: 0.85rem; color: #555;" id="metaInfo"></p>
         <h2 id="questionText" style="font-size: 1.1rem; margin-bottom: 15px;"></h2>
-        <div class="form-group">
+        
+        <div id="descArea" class="form-group">
             <input type="text" id="userAnswer" placeholder="答えを入力してください">
+            <button id="submitBtn" onclick="checkDescAnswer()">回答する</button>
         </div>
-        <button id="submitBtn" onclick="checkAnswer()">回答する</button>
+
+        <div id="choiceArea" class="form-group hidden">
+            </div>
+
+        <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">この問題をスキップ</button>
         <div id="feedbackArea" class="feedback hidden"></div>
-        <button id="nextBtn" class="hidden" style="margin-top: 10px;" onclick="nextQuestion()">次の問題へ</button>
+        <button id="nextBtn" class="hidden" onclick="nextQuestion()">次の問題へ</button>
     </div>
 
     <div class="card hidden" id="resultScreen">
@@ -131,32 +154,42 @@
     <script>
         // ==========================================
         // 【クイズデータの追加・編集エリア】
+        // type: "desc" (記述) / "choice" (選択)
         // ==========================================
-        const quizData = [
-            { question: "サンプル問題1：1巻の質問", answer: "答えA", range: "1巻", difficulty: "簡単", explanation: "1巻の解説です。" },
-            { question: "サンプル問題2：2巻の質問", answer: "答えB", range: "2巻", difficulty: "普通", explanation: "2巻の解説です。" },
-            { question: "サンプル問題3：4上巻の質問", answer: "答えC", range: "4上巻", difficulty: "普通", explanation: "4上巻の解説です。" },
-            { question: "サンプル問題4：12下巻の質問", answer: "答えD", range: "12下巻", difficulty: "難しい", explanation: "12下巻の解説です。" },
-            { question: "サンプル問題5：その他の質問", answer: "答えE", range: "その他（アンソロジー、画集、ラジオ、イベント、Xなど）", difficulty: "簡単", explanation: "その他の解説です。" }
-        ];
+            const quizData = [
+    // 【例1：記述式問題の書き方】
+    { 
+        type: "desc",                               // 記述式は "desc"
+        question: "1巻の主人公の名前は？",            // 問題文
+        answer: "アノス",                           // 正解の答え
+        range: "1巻",                               // 出題範囲（※選択肢にある名称）
+        difficulty: "簡単",                         // 難易度（簡単 / 普通 / 難しい）
+        explanation: "魔王アノス・ヴォルディゴードです。" // 解説
+    },
 
-        // 各巻を数値化して大小比較するためのヘルパー関数（デバッグ強化版）
+    // 【例2：選択問題の書き方】
+    { 
+        type: "choice",                             // 選択式は "choice"
+        question: "2巻で登場する最初の試練の相手は？", // 問題文
+        choices: ["ゼペス", "リーバ", "アイヴィス", "メルへス"], // 選択肢の配列（いくつでもOK）
+        answer: "ゼペス",                           // 選択肢の中にある「正解のテキスト」
+        range: "2巻",                               // 出題範囲
+        difficulty: "普通",                         // 難易度
+        explanation: "皇魔族のゼペス・インドゥです。" // 解説
+    }
+];
+
         function getVolumeNumber(rangeStr) {
             if (!rangeStr) return -1;
             if (rangeStr.includes("その他")) return 999;
             
             let match = rangeStr.match(/^(\d+)(上巻|下巻|巻下)?/);
             if (match) {
-                let num = parseInt(match[1], 10);
-                let sub = match[2];
-                if (sub === "上巻") return num; // 範囲判定を安全に行うため整数ベースで扱う
-                if (sub === "下巻" || sub === "巻下") return num;
-                return num;
+                return parseInt(match[1], 10);
             }
             return -1;
         }
 
-        // 選択された範囲に含まれるかを判定する関数（デバッグ強化版）
         function isRangeMatch(questionRange, selectedRange) {
             if (selectedRange === '全範囲') return true;
             if (questionRange === selectedRange) return true;
@@ -165,7 +198,6 @@
                 return questionRange === selectedRange;
             }
 
-            // 「〇巻（上下巻両方）」が選ばれた場合の判定（例: 4巻、10巻、12巻、13巻、14巻）
             if (selectedRange.includes('巻（上下巻両方）')) {
                 let baseMatch = selectedRange.match(/^(\d+)巻/);
                 if (baseMatch) {
@@ -175,7 +207,6 @@
                 }
             }
 
-            // まとまった範囲の数値判定
             let qVol = getVolumeNumber(questionRange);
             if (qVol === 999 || qVol === -1) return false;
 
@@ -210,7 +241,6 @@
                 return;
             }
 
-            // ランダムにシャッフルして最大10個抽出
             currentList.sort(() => Math.random() - 0.5);
             currentList = currentList.slice(0, 10);
 
@@ -227,14 +257,39 @@
             document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
             document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${q.range}]`;
             document.getElementById('questionText').innerText = q.question;
-            document.getElementById('userAnswer').value = '';
-            document.getElementById('userAnswer').disabled = false;
-            document.getElementById('submitBtn').classList.remove('hidden');
-            document.getElementById('feedbackArea').classList.add('hidden');
-            document.getElementById('nextBtn').classList.add('hidden');
+            
+            const descArea = document.getElementById('descArea');
+            const choiceArea = document.getElementById('choiceArea');
+            const feedbackArea = document.getElementById('feedbackArea');
+            const skipBtn = document.getElementById('skipBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            feedbackArea.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            skipBtn.classList.remove('hidden');
+
+            if (q.type === 'choice') {
+                descArea.classList.add('hidden');
+                choiceArea.classList.remove('hidden');
+                choiceArea.innerHTML = '';
+
+                q.choices.forEach(choiceText => {
+                    const btn = document.createElement('button');
+                    btn.className = 'choice-btn';
+                    btn.innerText = choiceText;
+                    btn.onclick = () => checkChoiceAnswer(choiceText);
+                    choiceArea.appendChild(btn);
+                });
+            } else {
+                choiceArea.classList.add('hidden');
+                descArea.classList.remove('hidden');
+                document.getElementById('userAnswer').value = '';
+                document.getElementById('userAnswer').disabled = false;
+                document.getElementById('submitBtn').classList.remove('hidden');
+            }
         }
 
-        function checkAnswer() {
+        function checkDescAnswer() {
             const userAns = document.getElementById('userAnswer').value.trim();
             if (!userAns) {
                 alert('答えを入力してください');
@@ -245,13 +300,49 @@
             const isCorrect = (userAns === q.answer);
             if (isCorrect) score++;
 
+            document.getElementById('userAnswer').disabled = true;
+            document.getElementById('submitBtn').classList.add('hidden');
+            showFeedback(isCorrect, q);
+        }
+
+        function checkChoiceAnswer(selectedChoice) {
+            const q = currentList[currentIndex];
+            const isCorrect = (selectedChoice === q.answer);
+            if (isCorrect) score++;
+
+            const buttons = document.querySelectorAll('#choiceArea button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            showFeedback(isCorrect, q);
+        }
+
+        function skipQuestion() {
+            const q = currentList[currentIndex];
+            
+            if (q.type === 'choice') {
+                const buttons = document.querySelectorAll('#choiceArea button');
+                buttons.forEach(btn => btn.disabled = true);
+            } else {
+                document.getElementById('userAnswer').disabled = true;
+                document.getElementById('submitBtn').classList.add('hidden');
+            }
+
+            const feedback = document.getElementById('feedbackArea');
+            feedback.className = `feedback incorrect`;
+            feedback.innerHTML = `<strong>スキップしました（不正解扱い）</strong><br>正解: ${q.answer}<br>解説: ${q.explanation}`;
+            feedback.classList.remove('hidden');
+
+            document.getElementById('skipBtn').classList.add('hidden');
+            document.getElementById('nextBtn').classList.remove('hidden');
+        }
+
+        function showFeedback(isCorrect, q) {
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
             feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br>正解: ${q.answer}<br>解説: ${q.explanation}`;
             feedback.classList.remove('hidden');
 
-            document.getElementById('userAnswer').disabled = true;
-            document.getElementById('submitBtn').classList.add('hidden');
+            document.getElementById('skipBtn').classList.add('hidden');
             document.getElementById('nextBtn').classList.remove('hidden');
         }
 
@@ -277,7 +368,6 @@
 
         function resetQuiz() {
             document.getElementById('resultScreen').classList.add('hidden');
-            document.getElementById('setupScreen').classList.add('hidden'); // セーフティ
             document.getElementById('setupScreen').classList.remove('hidden');
         }
     </script>
