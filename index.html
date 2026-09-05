@@ -3,65 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notepad - 簡易メモ</title>
+    <title>作品クイズツール</title>
     <style>
-        body { 
-            font-family: sans-serif; 
-            margin: 0; 
-            padding: 10px; 
-            background: #f4f4f4; 
-            color: #333; 
+        body {
+            font-family: sans-serif;
+            max-width: 650px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+            line-height: 1.5;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 1.3rem; margin-top: 0; color: #0056b3; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             box-sizing: border-box;
         }
-        .container { 
-            max-width: 100%; 
-            margin: 0 auto; 
-            background: #fff; 
-            padding: 15px; 
-            border-radius: 6px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        button {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
         }
-        h2 { font-size: 18px; margin-top: 0; }
-        input[type="url"] { 
-            width: 100%; 
-            padding: 10px; 
-            font-size: 16px; 
-            border: 1px solid #ccc; 
-            border-radius: 4px; 
-            box-sizing: border-box;
-            margin-bottom: 12px;
-        }
-        iframe { 
-            width: 100%; 
-            height: 70vh; 
-            border: 1px solid #ccc; 
-            border-radius: 4px; 
-            background: #fff; 
-        }
+        button:hover { background-color: #0056b3; }
+        .hidden { display: none !important; }
+        .feedback { margin-top: 15px; padding: 12px; border-radius: 4px; }
+        .correct { background-color: #d4edda; color: #155724; }
+        .incorrect { background-color: #f8d7da; color: #721c24; }
+        .progress { font-size: 0.85rem; color: #666; margin-bottom: 10px; text-align: right; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>メモ帳アプリ</h2>
-    <input type="url" id="urlInput" placeholder="URLを入力・貼り付けすると自動で表示" inputmode="url" autocapitalize="none">
-    <iframe id="displayFrame"></iframe>
-</div>
+    <div class="card" id="setupScreen">
+        <h1>作品クイズ設定</h1>
+        <div class="form-group">
+            <label>難易度選択</label>
+            <select id="diffSelect">
+                <option value="全て">全て</option>
+                <option value="簡単">簡単</option>
+                <option value="普通">普通</option>
+                <option value="難しい">難しい</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>出題範囲選択</label>
+            <select id="rangeSelect">
+                <option value="全範囲">全範囲</option>
+                <option value="1巻">1巻</option>
+                <option value="2巻">2巻</option>
+                <option value="3巻">3巻</option>
+                <option value="4上巻">4上巻</option>
+                <option value="4下巻">4下巻</option>
+                <option value="4巻（上下巻両方）">4巻（上下巻両方）</option>
+                <option value="5巻">5巻</option>
+                <option value="6巻">6巻</option>
+                <option value="7巻">7巻</option>
+                <option value="8巻">8巻</option>
+                <option value="9巻">9巻</option>
+                <option value="10上巻">10上巻</option>
+                <option value="10下巻">10下巻</option>
+                <option value="10巻（上下巻両方）">10巻（上下巻両方）</option>
+                <option value="11巻">11巻</option>
+                <option value="12上巻">12上巻</option>
+                <option value="12下巻">12下巻</option>
+                <option value="12巻（上下巻両方）">12巻（上下巻両方）</option>
+                <option value="13上巻">13上巻</option>
+                <option value="13下巻">13下巻</option>
+                <option value="13巻（上下巻両方）">13巻（上下巻両方）</option>
+                <option value="14上巻">14上巻</option>
+                <option value="14巻下">14巻下</option>
+                <option value="14巻（上下巻両方）">14巻（上下巻両方）</option>
+                <option value="15巻">15巻</option>
+                <option value="16巻">16巻</option>
+                <option value="17巻">17巻</option>
+                <option value="1巻～4下巻">1巻～4下巻</option>
+                <option value="5巻～8巻">5巻～8巻</option>
+                <option value="9巻～10下巻">9巻～10下巻</option>
+                <option value="1巻～10下巻">1巻～10下巻</option>
+                <option value="11巻～17巻">11巻～17巻</option>
+                <option value="1巻～17巻">1巻～17巻</option>
+                <option value="その他（アンソロジー、画集、ラジオ、イベント、Xなど）">その他（アンソロジー、画集、ラジオ、イベント、Xなど）</option>
+            </select>
+        </div>
+        <button onclick="startQuiz()">クイズスタート</button>
+    </div>
 
-<script>
-    const urlInput = document.getElementById('urlInput');
-    const displayFrame = document.getElementById('displayFrame');
+    <div class="card hidden" id="quizScreen">
+        <div class="progress" id="progressText">第 1 問 / 全 10 問</div>
+        <p style="font-size: 0.85rem; color: #555;" id="metaInfo"></p>
+        <h2 id="questionText" style="font-size: 1.1rem; margin-bottom: 15px;"></h2>
+        <div class="form-group">
+            <input type="text" id="userAnswer" placeholder="答えを入力してください">
+        </div>
+        <button id="submitBtn" onclick="checkAnswer()">回答する</button>
+        <div id="feedbackArea" class="feedback hidden"></div>
+        <button id="nextBtn" class="hidden" style="margin-top: 10px;" onclick="nextQuestion()">次の問題へ</button>
+    </div>
 
-    urlInput.addEventListener('input', function() {
-        let val = urlInput.value.trim();
-        if (val.length > 3 && (val.includes('.') || val.startsWith('http'))) {
-            if (!val.startsWith('http://') && !val.startsWith('https://')) {
-                val = 'https://' + val;
+    <div class="card hidden" id="resultScreen">
+        <h1>結果発表</h1>
+        <div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #475569;">
+            <p style="margin: 0 0 5px 0;"><strong>選択難易度:</strong> <span id="resultDiff"></span></p>
+            <p style="margin: 0;"><strong>出題範囲:</strong> <span id="resultRange"></span></p>
+        </div>
+        <p id="scoreText" style="font-size: 1.2rem; text-align: center; font-weight: bold; margin: 15px 0;"></p>
+        <button onclick="resetQuiz()">最初に戻る</button>
+    </div>
+
+    <script>
+        // ==========================================
+        // 【クイズデータの追加・編集エリア】
+        // ==========================================
+        const quizData = [
+            { question: "サンプル問題1：1巻の質問", answer: "答えA", range: "1巻", difficulty: "簡単", explanation: "1巻の解説です。" },
+            { question: "サンプル問題2：2巻の質問", answer: "答えB", range: "2巻", difficulty: "普通", explanation: "2巻の解説です。" },
+            { question: "サンプル問題3：4上巻の質問", answer: "答えC", range: "4上巻", difficulty: "普通", explanation: "4上巻の解説です。" },
+            { question: "サンプル問題4：12下巻の質問", answer: "答えD", range: "12下巻", difficulty: "難しい", explanation: "12下巻の解説です。" },
+            { question: "サンプル問題5：その他の質問", answer: "答えE", range: "その他（アンソロジー、画集、ラジオ、イベント、Xなど）", difficulty: "簡単", explanation: "その他の解説です。" }
+        ];
+
+        // 各巻を数値化して大小比較するためのヘルパー関数（デバッグ強化版）
+        function getVolumeNumber(rangeStr) {
+            if (!rangeStr) return -1;
+            if (rangeStr.includes("その他")) return 999;
+            
+            let match = rangeStr.match(/^(\d+)(上巻|下巻|巻下)?/);
+            if (match) {
+                let num = parseInt(match[1], 10);
+                let sub = match[2];
+                if (sub === "上巻") return num; // 範囲判定を安全に行うため整数ベースで扱う
+                if (sub === "下巻" || sub === "巻下") return num;
+                return num;
             }
-            displayFrame.src = val;
+            return -1;
         }
-    });
-</script>
 
+        // 選択された範囲に含まれるかを判定する関数（デバッグ強化版）
+        function isRangeMatch(questionRange, selectedRange) {
+            if (selectedRange === '全範囲') return true;
+            if (questionRange === selectedRange) return true;
+
+            if (questionRange.includes("その他") || selectedRange.includes("その他")) {
+                return questionRange === selectedRange;
+            }
+
+            // 「〇巻（上下巻両方）」が選ばれた場合の判定（例: 4巻、10巻、12巻、13巻、14巻）
+            if (selectedRange.includes('巻（上下巻両方）')) {
+                let baseMatch = selectedRange.match(/^(\d+)巻/);
+                if (baseMatch) {
+                    let baseNum = parseInt(baseMatch[1], 10);
+                    let qMatch = questionRange.match(/^(\d+)/);
+                    if (qMatch && parseInt(qMatch[1], 10) === baseNum) return true;
+                }
+            }
+
+            // まとまった範囲の数値判定
+            let qVol = getVolumeNumber(questionRange);
+            if (qVol === 999 || qVol === -1) return false;
+
+            if (selectedRange === '1巻～4下巻') return qVol >= 1 && qVol <= 4;
+            if (selectedRange === '5巻～8巻') return qVol >= 5 && qVol <= 8;
+            if (selectedRange === '9巻～10下巻') return qVol >= 9 && qVol <= 10;
+            if (selectedRange === '1巻～10下巻') return qVol >= 1 && qVol <= 10;
+            if (selectedRange === '11巻～17巻') return qVol >= 11 && qVol <= 17;
+            if (selectedRange === '1巻～17巻') return qVol >= 1 && qVol <= 17;
+
+            return false;
+        }
+
+        let currentList = [];
+        let currentIndex = 0;
+        let score = 0;
+        let selectedDiff = '';
+        let selectedRange = '';
+
+        function startQuiz() {
+            selectedDiff = document.getElementById('diffSelect').value;
+            selectedRange = document.getElementById('rangeSelect').value;
+
+            currentList = quizData.filter(q => {
+                const diffMatch = (selectedDiff === '全て' || q.difficulty === selectedDiff);
+                const rangeMatch = isRangeMatch(q.range, selectedRange);
+                return diffMatch && rangeMatch;
+            });
+
+            if (currentList.length === 0) {
+                alert('条件に一致するクイズがありません！\n（※選択した範囲・難易度の問題データがまだ追加されていない可能性があります）');
+                return;
+            }
+
+            // ランダムにシャッフルして最大10個抽出
+            currentList.sort(() => Math.random() - 0.5);
+            currentList = currentList.slice(0, 10);
+
+            currentIndex = 0;
+            score = 0;
+
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('quizScreen').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = currentList[currentIndex];
+            document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
+            document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${q.range}]`;
+            document.getElementById('questionText').innerText = q.question;
+            document.getElementById('userAnswer').value = '';
+            document.getElementById('userAnswer').disabled = false;
+            document.getElementById('submitBtn').classList.remove('hidden');
+            document.getElementById('feedbackArea').classList.add('hidden');
+            document.getElementById('nextBtn').classList.add('hidden');
+        }
+
+        function checkAnswer() {
+            const userAns = document.getElementById('userAnswer').value.trim();
+            if (!userAns) {
+                alert('答えを入力してください');
+                return;
+            }
+
+            const q = currentList[currentIndex];
+            const isCorrect = (userAns === q.answer);
+            if (isCorrect) score++;
+
+            const feedback = document.getElementById('feedbackArea');
+            feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+            feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br>正解: ${q.answer}<br>解説: ${q.explanation}`;
+            feedback.classList.remove('hidden');
+
+            document.getElementById('userAnswer').disabled = true;
+            document.getElementById('submitBtn').classList.add('hidden');
+            document.getElementById('nextBtn').classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentIndex++;
+            if (currentIndex < currentList.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('quizScreen').classList.add('hidden');
+            document.getElementById('resultScreen').classList.remove('hidden');
+            
+            document.getElementById('resultDiff').innerText = selectedDiff;
+            document.getElementById('resultRange').innerText = selectedRange;
+
+            const rate = Math.round((score / currentList.length) * 100);
+            document.getElementById('scoreText').innerText = `正答数: ${score} / ${currentList.length} 問 (${rate}%)`;
+        }
+
+        function resetQuiz() {
+            document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.add('hidden'); // セーフティ
+            document.getElementById('setupScreen').classList.remove('hidden');
+        }
+    </script>
 </body>
 </html>
