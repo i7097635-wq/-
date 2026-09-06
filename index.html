@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>作品クイズツール</title>
+    <title>魔王学院の不適合者クイズ</title>
     <style>
         body {
             font-family: sans-serif;
@@ -57,9 +57,7 @@
             padding: 12px 15px;
         }
         .choice-btn:hover { background-color: #cbd5e1; }
-        .skip-btn {
-            background-color: #6c757d;
-        }
+        .skip-btn { background-color: #6c757d; }
         .hidden { display: none !important; }
         .feedback { margin-top: 15px; padding: 12px; border-radius: 4px; }
         .correct { background-color: #d4edda; color: #155724; }
@@ -71,7 +69,7 @@
 
     <!-- 設定画面 -->
     <div class="card" id="setupScreen">
-        <h1>作品クイズ設定</h1>
+        <h1>魔王学院の不適合者クイズ</h1>
         <div class="form-group">
             <label>難易度選択</label>
             <select id="diffSelect">
@@ -121,7 +119,7 @@
                 <option value="その他（書籍外）">その他（書籍外）</option>
             </select>
         </div>
-        <button onclick="startQuiz()">クイズスタート</button>
+        <button id="startBtn">クイズスタート</button>
     </div>
 
     <!-- クイズ出題画面 -->
@@ -133,17 +131,15 @@
         <!-- 記述式用エリア -->
         <div id="descArea" class="form-group">
             <input type="text" id="userAnswer" placeholder="答えを入力してください">
-            <button id="submitBtn" onclick="checkDescAnswer()">回答する</button>
+            <button id="submitBtn">回答する</button>
         </div>
 
         <!-- 選択式用エリア -->
-        <div id="choiceArea" class="form-group hidden">
-            <!-- 選択肢ボタンが動的に挿入されます -->
-        </div>
+        <div id="choiceArea" class="form-group hidden"></div>
 
-        <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">この問題をスキップ</button>
+        <button id="skipBtn" class="skip-btn">この問題をスキップ</button>
         <div id="feedbackArea" class="feedback hidden"></div>
-        <button id="nextBtn" class="hidden" onclick="nextQuestion()">次の問題へ</button>
+        <button id="nextBtn" class="hidden">次の問題へ</button>
     </div>
 
     <!-- 結果画面 -->
@@ -154,7 +150,7 @@
             <p style="margin: 0;"><strong>出題範囲:</strong> <span id="resultRange"></span></p>
         </div>
         <p id="scoreText" style="font-size: 1.2rem; text-align: center; font-weight: bold; margin: 15px 0;"></p>
-        <button onclick="resetQuiz()">最初に戻る</button>
+        <button id="resetBtn">最初に戻る</button>
     </div>
 
     <script>
@@ -1868,27 +1864,20 @@
         function getVolumeNumber(rangeStr) {
             if (!rangeStr) return -1;
             if (rangeStr.includes("その他")) return 999;
-            
             let match = rangeStr.match(/^(\d+)(上巻|下巻)?/);
-            if (match) {
-                return parseInt(match[1], 10);
-            }
+            if (match) return parseInt(match[1], 10);
             return -1;
         }
 
         function isRangeMatch(questionRange, selectedRange) {
-            // 問題側の range が空欄("")の場合
             if (questionRange === "") {
                 return (selectedRange === "全範囲" || selectedRange === "1巻～17巻");
             }
-
             if (selectedRange === '全範囲') return true;
             if (questionRange === selectedRange) return true;
-
             if (questionRange.includes("その他") || selectedRange.includes("その他")) {
                 return questionRange === selectedRange;
             }
-
             if (selectedRange.includes('巻（上下巻両方）')) {
                 let baseMatch = selectedRange.match(/^(\d+)巻/);
                 if (baseMatch) {
@@ -1897,7 +1886,6 @@
                     if (qMatch && parseInt(qMatch[1], 10) === baseNum) return true;
                 }
             }
-
             let qVol = getVolumeNumber(questionRange);
             if (qVol === 999 || qVol === -1) return false;
 
@@ -1928,14 +1916,12 @@
             });
 
             if (filteredList.length === 0) {
-                alert('条件に一致するクイズがありません！\n（※選択した範囲・難易度の問題データがまだ追加されていない可能性があります）');
+                alert('条件に一致するクイズがありません！');
                 return;
             }
 
-            // 重複なしでランダム抽出しつつ、問題数が10問未満でもエラーにせず全問出す安全仕様
             filteredList.sort(() => Math.random() - 0.5);
-            const questionCount = Math.min(filteredList.length, 10);
-            currentList = filteredList.slice(0, questionCount);
+            currentList = filteredList.slice(0, Math.min(filteredList.length, 10));
 
             currentIndex = 0;
             score = 0;
@@ -1948,24 +1934,16 @@
         function loadQuestion() {
             const q = currentList[currentIndex];
             document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
-            
-            let rangeDisplay = q.range ? q.range : "非公開";
-            document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${rangeDisplay}]`;
-            
+            document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${q.range ? q.range : "非公開"}]`;
             document.getElementById('questionText').innerText = q.question;
             
-            const descArea = document.getElementById('descArea');
-            const choiceArea = document.getElementById('choiceArea');
-            const feedbackArea = document.getElementById('feedbackArea');
-            const skipBtn = document.getElementById('skipBtn');
-            const nextBtn = document.getElementById('nextBtn');
-
-            feedbackArea.classList.add('hidden');
-            nextBtn.classList.add('hidden');
-            skipBtn.classList.remove('hidden');
+            document.getElementById('feedbackArea').classList.add('hidden');
+            document.getElementById('nextBtn').classList.add('hidden');
+            document.getElementById('skipBtn').classList.remove('hidden');
 
             if (q.type === 'choice') {
-                descArea.classList.add('hidden');
+                document.getElementById('descArea').classList.add('hidden');
+                const choiceArea = document.getElementById('choiceArea');
                 choiceArea.classList.remove('hidden');
                 choiceArea.innerHTML = '';
 
@@ -1973,12 +1951,12 @@
                     const btn = document.createElement('button');
                     btn.className = 'choice-btn';
                     btn.innerText = choiceText;
-                    btn.onclick = () => checkChoiceAnswer(choiceText);
+                    btn.addEventListener('click', () => checkChoiceAnswer(choiceText));
                     choiceArea.appendChild(btn);
                 });
             } else {
-                choiceArea.classList.add('hidden');
-                descArea.classList.remove('hidden');
+                document.getElementById('choiceArea').classList.add('hidden');
+                document.getElementById('descArea').classList.remove('hidden');
                 const inputBox = document.getElementById('userAnswer');
                 inputBox.value = '';
                 inputBox.disabled = false;
@@ -1992,7 +1970,6 @@
                 alert('答えを入力してください');
                 return;
             }
-
             const q = currentList[currentIndex];
             const isCorrect = (userAns === q.answer);
             if (isCorrect) score++;
@@ -2007,18 +1984,14 @@
             const isCorrect = (selectedChoice === q.answer);
             if (isCorrect) score++;
 
-            const buttons = document.querySelectorAll('#choiceArea button');
-            buttons.forEach(btn => btn.disabled = true);
-
+            document.querySelectorAll('#choiceArea button').forEach(btn => btn.disabled = true);
             showFeedback(isCorrect, q);
         }
 
         function skipQuestion() {
             const q = currentList[currentIndex];
-            
             if (q.type === 'choice') {
-                const buttons = document.querySelectorAll('#choiceArea button');
-                buttons.forEach(btn => btn.disabled = true);
+                document.querySelectorAll('#choiceArea button').forEach(btn => btn.disabled = true);
             } else {
                 document.getElementById('userAnswer').disabled = true;
                 document.getElementById('submitBtn').classList.add('hidden');
@@ -2026,7 +1999,7 @@
 
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback incorrect`;
-            feedback.innerHTML = `登録データがスキップされました<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
+            feedback.innerHTML = `スキップしました（不正解扱い）<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
             document.getElementById('skipBtn').classList.add('hidden');
@@ -2055,7 +2028,6 @@
         function showResult() {
             document.getElementById('quizScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.remove('hidden');
-            
             document.getElementById('resultDiff').innerText = selectedDiff;
             document.getElementById('resultRange').innerText = selectedRange;
 
@@ -2067,6 +2039,13 @@
             document.getElementById('resultScreen').classList.add('hidden');
             document.getElementById('setupScreen').classList.remove('hidden');
         }
+
+        // イベントリスナーの登録
+        document.getElementById('startBtn').addEventListener('click', startQuiz);
+        document.getElementById('submitBtn').addEventListener('click', checkDescAnswer);
+        document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+        document.getElementById('nextBtn').addEventListener('click', nextQuestion);
+        document.getElementById('resetBtn').addEventListener('click', resetQuiz);
     </script>
 </body>
 </html>
