@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>魔王学院の不適合者クイズ</title>
+    <title>作品クイズツール</title>
     <!-- Supabase JSクライアントの読み込み -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -73,7 +73,7 @@
 
     <!-- 設定画面 -->
     <div class="card" id="setupScreen">
-        <h1>魔王学院の不適合者クイズ</h1>
+        <h1>作品クイズ設定</h1>
         <div class="form-group">
             <label>難易度選択</label>
             <select id="diffSelect">
@@ -123,7 +123,7 @@
                 <option value="その他（書籍外）">その他（書籍外）</option>
             </select>
         </div>
-        <button onclick="startQuiz()">スタート</button>
+        <button onclick="startQuiz()">クイズスタート</button>
     </div>
 
     <!-- クイズ出題画面 -->
@@ -1872,7 +1872,6 @@
                 explanation: "正解できた人は異常。" 
             }
         ];
-
         function getVolumeNumber(rangeStr) {
             if (!rangeStr) return -1;
             if (rangeStr.includes("その他")) return 999;
@@ -2001,21 +2000,17 @@
             if (isCorrect) score++;
             const q = currentList[currentIndex];
 
-            // Supabaseのデータを更新・取得
             const stats = await updateSupabaseStats(q, isCorrect, userChoice);
 
-            // フィードバック表示
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
             feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
-            // 統計情報の表示
             if (stats) {
                 const statsArea = document.getElementById('statsArea');
-                let html = `みんなの正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
+                let html = `正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
                 
-                // 選択問題の場合はそれぞれの選択肢ごとの選ばれた割合も表示
                 if (q.type === 'choice' && stats.choice_counts) {
                     html += `<div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">【選択肢ごとの割合】</div>`;
                     q.choices.forEach(choice => {
@@ -2034,6 +2029,7 @@
         }
 
         async function updateSupabaseStats(q, isCorrect, userChoice) {
+            if (!supabaseClient) return null;
             try {
                 let { data, error } = await supabaseClient
                     .from('quiz_stats')
@@ -2078,7 +2074,6 @@
                 };
 
             } catch (err) {
-                console.error('Supabase update error:', err);
                 return null;
             }
         }
@@ -2101,7 +2096,7 @@
 
             if (stats) {
                 const statsArea = document.getElementById('statsArea');
-                statsArea.innerHTML = `みんなの正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
+                statsArea.innerHTML = `正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
                 statsArea.classList.remove('hidden');
             }
 
