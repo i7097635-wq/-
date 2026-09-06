@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>魔王学院の不適合者クイズ</title>
-    <!-- Supabase JSクライアント（読み込みに失敗しても処理が止まらないよう非同期風に安全処理） -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -65,8 +63,6 @@
         .correct { background-color: #d4edda; color: #155724; }
         .incorrect { background-color: #f8d7da; color: #721c24; }
         .progress { font-size: 0.85rem; color: #666; margin-bottom: 10px; text-align: right; }
-        .stats-info { margin-top: 8px; font-size: 0.85rem; color: #475569; background: #f1f5f9; padding: 10px; border-radius: 4px; }
-        .choice-stat-item { margin-top: 4px; font-size: 0.8rem; color: #334155; }
     </style>
 </head>
 <body>
@@ -109,7 +105,7 @@
                 <option value="13下巻">13下巻</option>
                 <option value="13巻（上下巻両方）">13巻（上下巻両方）</option>
                 <option value="14上巻">14上巻</option>
-                <option value="14巻下">14下巻</option>
+                <option value="14下巻">14下巻</option>
                 <option value="14巻（上下巻両方）">14巻（上下巻両方）</option>
                 <option value="15巻">15巻</option>
                 <option value="16巻">16巻</option>
@@ -143,7 +139,6 @@
 
         <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">この問題をスキップ</button>
         <div id="feedbackArea" class="feedback hidden"></div>
-        <div id="statsArea" class="stats-info hidden"></div>
         <button id="nextBtn" class="hidden" onclick="nextQuestion()">次の問題へ</button>
     </div>
 
@@ -159,13 +154,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // 【Supabase設定】ご自身の情報に書き換えてください
-        // ==========================================
-        const SUPABASE_URL = 'https://qcdhcqckobrpdeyaoumw.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_xq0phexgliP8djOZ67rNFA_79V5v8db';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         // ==========================================
         // 【クイズデータの追加・編集エリア】
         // ==========================================
@@ -1948,7 +1936,6 @@
             document.getElementById('questionText').innerText = q.question;
             
             document.getElementById('feedbackArea').classList.add('hidden');
-            document.getElementById('statsArea').classList.add('hidden');
             document.getElementById('nextBtn').classList.add('hidden');
             document.getElementById('skipBtn').classList.remove('hidden');
 
@@ -1986,7 +1973,7 @@
 
             document.getElementById('userAnswer').disabled = true;
             document.getElementById('submitBtn').classList.add('hidden');
-            handleAnswer(isCorrect, null);
+            handleAnswer(isCorrect);
         }
 
         function handleChoiceAnswer(selectedChoice) {
@@ -1994,88 +1981,23 @@
             const isCorrect = (selectedChoice === q.answer);
 
             document.querySelectorAll('#choiceArea button').forEach(btn => btn.disabled = true);
-            handleAnswer(isCorrect, selectedChoice);
+            handleAnswer(isCorrect);
         }
 
-        async function handleAnswer(isCorrect, userChoice) {
+        function handleAnswer(isCorrect) {
             if (isCorrect) score++;
             const q = currentList[currentIndex];
-
-            const stats = await updateSupabaseStats(q, isCorrect, userChoice);
 
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
             feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
-            if (stats) {
-                const statsArea = document.getElementById('statsArea');
-                let html = `みんなの正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
-                
-                if (q.type === 'choice' && stats.choice_counts) {
-                    html += `<div style="margin-top: 6px; border-top: 1px dashed #cbd5e1; padding-top: 4px;">【選択肢ごとの割合】</div>`;
-                    q.choices.forEach(choice => {
-                        const count = stats.choice_counts[choice] || 0;
-                        const percent = stats.total_count > 0 ? Math.round((count / stats.total_count) * 100) : 0;
-                        const isThisCorrect = (choice === q.answer) ? '(正解)' : '';
-                        html += `<div class="choice-stat-item">・${choice} ${isThisCorrect}: <strong>${percent}%</strong> (${count}票)</div>`;
-                    });
-                }
-                statsArea.innerHTML = html;
-                statsArea.classList.remove('hidden');
-            }
-
             document.getElementById('skipBtn').classList.add('hidden');
             document.getElementById('nextBtn').classList.remove('hidden');
         }
 
-async function updateSupabaseStats(q, isCorrect, userChoice) {
-    if (!supabaseClient) return null;
-    try {
-        // 1. まず現在のデータを取得（存在しない場合は新規作成用のベースを用意）
-        let { data, error } = await supabaseClient
-            .from('quiz_stats')
-            .select('*')
-            .eq('question_text', q.question)
-            .maybeSingle(); // .single() ではなく .maybeSingle() を使うとデータなしのエラーを防げます
-
-        let newCorrect = isCorrect ? (data ? data.correct_count + 1 : 1) : (data ? data.correct_count : 0);
-        let newTotal = data ? data.total_count + 1 : 1;
-        let newChoiceCounts = data && data.choice_counts ? { ...data.choice_counts } : {};
-
-        if (q.type === 'choice' && userChoice) {
-            newChoiceCounts[userChoice] = (newChoiceCounts[userChoice] || 0) + 1;
-        }
-
-        // 2. upsertを使って一発で保存（存在すれば更新、なければ挿入）
-        const { error: upsertError } = await supabaseClient
-            .from('quiz_stats')
-            .upsert({ 
-                question_text: q.question, 
-                correct_count: newCorrect, 
-                total_count: newTotal,
-                choice_counts: newChoiceCounts
-            }, { onConflict: 'question_text' });
-
-        if (upsertError) {
-            console.error('Upsert error:', upsertError.message);
-        }
-
-        const accuracyRate = newTotal > 0 ? Math.round((newCorrect / newTotal) * 100) : 0;
-        return {
-            correct_count: newCorrect,
-            total_count: newTotal,
-            accuracyRate: accuracyRate,
-            choice_counts: newChoiceCounts
-        };
-
-    } catch (err) {
-        // 万が一通信やDBで例外が起きて絶対にクイズを止めないためのフォールバック
-        console.log('Stats update skipped due to network/DB issue');
-        return null;
-    }
-}
-        async function skipQuestion() {
+        function skipQuestion() {
             const q = currentList[currentIndex];
             if (q.type === 'choice') {
                 document.querySelectorAll('#choiceArea button').forEach(btn => btn.disabled = true);
@@ -2084,18 +2006,10 @@ async function updateSupabaseStats(q, isCorrect, userChoice) {
                 document.getElementById('submitBtn').classList.add('hidden');
             }
 
-            const stats = await updateSupabaseStats(q, false, null);
-
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback incorrect`;
             feedback.innerHTML = `スキップしました（不正解扱い）<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
-
-            if (stats) {
-                const statsArea = document.getElementById('statsArea');
-                statsArea.innerHTML = `みんなの正答率: <strong>${stats.accuracyRate}%</strong> （正解数: ${stats.correct_count} / 総回答数: ${stats.total_count}）`;
-                statsArea.classList.remove('hidden');
-            }
 
             document.getElementById('skipBtn').classList.add('hidden');
             document.getElementById('nextBtn').classList.remove('hidden');
