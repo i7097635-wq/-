@@ -2029,57 +2029,52 @@
             document.getElementById('nextBtn').classList.remove('hidden');
         }
 
-        async function updateSupabaseStats(q, isCorrect, userChoice) {
-            if (!supabaseClient) return null;
-            try {
-                let { data, error } = await supabaseClient
-                    .from('quiz_stats')
-                    .select('*')
-                    .eq('question_text', q.question)
-                    .single();
+async function updateSupabaseStats(q, isCorrect, userChoice) {
+    if (!supabaseClient) return null;
+    try {
+        // 1. まず現在のデータを取得（存在しない場合は新規作成用のベースを用意）
+        let { data, error } = await supabaseClient
+            .from('quiz_stats')
+            .select('*')
+            .eq('question_text', q.question)
+            .maybeSingle(); // .single() ではなく .maybeSingle() を使うとデータなしのエラーを防げます
 
-                let newCorrect = isCorrect ? (data ? data.correct_count + 1 : 1) : (data ? data.correct_count : 0);
-                let newTotal = data ? data.total_count + 1 : 1;
-                let newChoiceCounts = data && data.choice_counts ? { ...data.choice_counts } : {};
+        let newCorrect = isCorrect ? (data ? data.correct_count + 1 : 1) : (data ? data.correct_count : 0);
+        let newTotal = data ? data.total_count + 1 : 1;
+        let newChoiceCounts = data && data.choice_counts ? { ...data.choice_counts } : {};
 
-                if (q.type === 'choice' && userChoice) {
-                    newChoiceCounts[userChoice] = (newChoiceCounts[userChoice] || 0) + 1;
-                }
-
-                if (data) {
-                    await supabaseClient
-                        .from('quiz_stats')
-                        .update({ 
-                            correct_count: newCorrect, 
-                            total_count: newTotal,
-                            choice_counts: newChoiceCounts
-                        })
-                        .eq('question_text', q.question);
-                } else {
-                    await supabaseClient
-                        .from('quiz_stats')
-                        .insert([{ 
-                            question_text: q.question, 
-                            correct_count: newCorrect, 
-                            total_count: newTotal,
-                            choice_counts: newChoiceCounts
-                        }]);
-                }
-
-                const accuracyRate = Math.round((newCorrect / newTotal) * 100);
-                return {
-                    correct_count: newCorrect,
-                    total_count: newTotal,
-                    accuracyRate: accuracyRate,
-                    choice_counts: newChoiceCounts
-                };
-
-            } catch (err) {
-                // 通信エラー時もクイズを中断させない
-                return null;
-            }
+        if (q.type === 'choice' && userChoice) {
+            newChoiceCounts[userChoice] = (newChoiceCounts[userChoice] || 0) + 1;
         }
 
+        // 2. upsertを使って一発で保存（存在すれば更新、なければ挿入）
+        const { error: upsertError } = await supabaseClient
+            .from('quiz_stats')
+            .upsert({ 
+                question_text: q.question, 
+                correct_count: newCorrect, 
+                total_count: newTotal,
+                choice_counts: newChoiceCounts
+            }, { onConflict: 'question_text' });
+
+        if (upsertError) {
+            console.error('Upsert error:', upsertError.message);
+        }
+
+        const accuracyRate = newTotal > 0 ? Math.round((newCorrect / newTotal) * 100) : 0;
+        return {
+            correct_count: newCorrect,
+            total_count: newTotal,
+            accuracyRate: accuracyRate,
+            choice_counts: newChoiceCounts
+        };
+
+    } catch (err) {
+        // 万が一通信やDBで例外が起きて絶対にクイズを止めないためのフォールバック
+        console.log('Stats update skipped due to network/DB issue');
+        return null;
+    }
+}
         async function skipQuestion() {
             const q = currentList[currentIndex];
             if (q.type === 'choice') {
