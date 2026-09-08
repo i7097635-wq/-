@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>作品クイズツール</title>
+    <title>作品クイズツール（完全版）</title>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             font-family: sans-serif;
@@ -57,22 +59,40 @@
             padding: 12px 15px;
         }
         .choice-btn:hover { background-color: #cbd5e1; }
-        .skip-btn {
-            background-color: #6c757d;
-        }
+        .skip-btn { background-color: #6c757d; }
         .hidden { display: none !important; }
         .feedback { margin-top: 15px; padding: 12px; border-radius: 4px; }
         .correct { background-color: #d4edda; color: #155724; }
         .incorrect { background-color: #f8d7da; color: #721c24; }
         .progress { font-size: 0.85rem; color: #666; margin-bottom: 10px; text-align: right; }
+        .timer-display { font-size: 1.2rem; font-weight: bold; color: #d9534f; text-align: center; margin-bottom: 10px; }
+        table.ranking-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        table.ranking-table th, table.ranking-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        table.ranking-table th { background-color: #f8fafc; }
     </style>
 </head>
 <body>
 
-    <!-- 設定画面 -->
+    <!-- ニックネーム登録・モード選択画面 -->
     <div class="card" id="setupScreen">
-        <h1>作品クイズ設定</h1>
+        <h1>作品クイズツール</h1>
         <div class="form-group">
+            <label>ニックネーム</label>
+            <input type="text" id="nicknameInput" placeholder="あなたの名前を入力">
+        </div>
+        <div class="form-group">
+            <label>モード選択</label>
+            <select id="modeSelect" onchange="toggleModeOptions()">
+                <option value="normal">通常モード（指定範囲・難易度）</option>
+                <option value="revenge">リベンジモード（過去に自分が間違えた問題）</option>
+                <option value="hardcore">難関モード（全体の正答率5%以下の問題）</option>
+                <option value="timeattack_1-17">タイムアタック（1巻～17巻）</option>
+                <option value="timeattack_all">タイムアタック（全範囲）</option>
+                <option value="endless_1-17">エンドレス（1巻～17巻）</option>
+                <option value="endless_all">エンドレス（全範囲）</option>
+            </select>
+        </div>
+        <div class="form-group" id="diffGroup">
             <label>難易度選択</label>
             <select id="diffSelect">
                 <option value="全て">全て</option>
@@ -81,7 +101,7 @@
                 <option value="難しい">難しい</option>
             </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="rangeGroup">
             <label>出題範囲選択</label>
             <select id="rangeSelect">
                 <option value="全範囲">全範囲</option>
@@ -122,11 +142,29 @@
             </select>
         </div>
         <button onclick="startQuiz()">クイズスタート</button>
+        <button style="background-color: #6c757d;" onclick="showRankingMenu()">ランキングを見る</button>
+    </div>
+
+    <!-- ランキング閲覧画面 -->
+    <div class="card hidden" id="rankingScreen">
+        <h1>ランキング</h1>
+        <div class="form-group">
+            <label>ランキング種類</label>
+            <select id="rankingTypeSelect" onchange="loadRankingData()">
+                <option value="timeattack_1-17">タイムアタック（1巻～17巻）</option>
+                <option value="timeattack_all">タイムアタック（全範囲）</option>
+                <option value="endless_1-17">エンドレス（1巻～17巻）</option>
+                <option value="endless_all">エンドレス（全範囲）</option>
+            </select>
+        </div>
+        <div id="rankingContent"></div>
+        <button onclick="resetQuiz()">設定に戻る</button>
     </div>
 
     <!-- クイズ出題画面 -->
     <div class="card hidden" id="quizScreen">
-        <div class="progress" id="progressText">第 1 問 / 全 10 問</div>
+        <div class="timer-display" id="timerDisplay"></div>
+        <div class="progress" id="progressText"></div>
         <p style="font-size: 0.85rem; color: #555;" id="metaInfo"></p>
         <h2 id="questionText" style="font-size: 1.1rem; margin-bottom: 15px;"></h2>
         
@@ -137,9 +175,7 @@
         </div>
 
         <!-- 選択式用エリア -->
-        <div id="choiceArea" class="form-group hidden">
-            <!-- 選択肢ボタンが動的に挿入されます -->
-        </div>
+        <div id="choiceArea" class="form-group hidden"></div>
 
         <button id="skipBtn" class="skip-btn" onclick="skipQuestion()">この問題をスキップ</button>
         <div id="feedbackArea" class="feedback hidden"></div>
@@ -150,19 +186,20 @@
     <div class="card hidden" id="resultScreen">
         <h1>結果発表</h1>
         <div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #475569;">
-            <p style="margin: 0 0 5px 0;"><strong>選択難易度:</strong> <span id="resultDiff"></span></p>
-            <p style="margin: 0;"><strong>出題範囲:</strong> <span id="resultRange"></span></p>
+            <p style="margin: 0 0 5px 0;"><strong>プレイヤー:</strong> <span id="resultNickname"></span></p>
+            <p style="margin: 0 0 5px 0;"><strong>モード:</strong> <span id="resultModeName"></span></p>
+            <p style="margin: 0;" id="resultDetailText"></p>
         </div>
         <p id="scoreText" style="font-size: 1.2rem; text-align: center; font-weight: bold; margin: 15px 0;"></p>
         <button onclick="resetQuiz()">最初に戻る</button>
     </div>
 
     <script>
-        // ==========================================
-        // 【クイズデータの追加・編集エリア】
-        // type: "desc" (記述) / "choice" (選択)
-        // range: "" にすると「全範囲」と「1巻～17巻」の時に出題されます
-        // ==========================================
+        // Supabase設定（ご自身のプロジェクト情報に書き換えてください）
+        const SUPABASE_URL = 'https://qcdhcqckobrpdeyaoumw.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_xq0phexgliP8djOZ67rNFA_79V5v8db';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         const quizData = [
             { 
                 type: "choice", 
@@ -1243,93 +1280,193 @@
             }
         ];
 
+        let currentList = [];
+        let currentIndex = 0;
+        let score = 0;
+        let correctCount = 0;
+        let currentNickname = '';
+        let currentMode = '';
+        let timer = null;
+        let timeLeft = 60;
+        let timeElapsed = 0;
+
+        // --- ローカル管理（リベンジモード用） ---
+        function getLocalRevengeList() {
+            return JSON.parse(localStorage.getItem('quiz_revenge_ids') || '[]');
+        }
+
+        function addLocalRevenge(qId) {
+            let list = getLocalRevengeList();
+            if (!list.includes(qId)) {
+                list.push(qId);
+                localStorage.setItem('quiz_revenge_ids', JSON.stringify(list));
+            }
+        }
+
+        function removeLocalRevenge(qId) {
+            let list = getLocalRevengeList();
+            list = list.filter(id => id !== qId);
+            localStorage.setItem('quiz_revenge_ids', JSON.stringify(list));
+        }
+
+        function toggleModeOptions() {
+            const mode = document.getElementById('modeSelect').value;
+            const diffGroup = document.getElementById('diffGroup');
+            const rangeGroup = document.getElementById('rangeGroup');
+            if (mode === 'revenge' || mode === 'hardcore') {
+                diffGroup.classList.add('hidden');
+                rangeGroup.classList.add('hidden');
+            } else if (mode.includes('timeattack') || mode.includes('endless')) {
+                diffGroup.classList.add('hidden');
+                rangeGroup.classList.add('hidden');
+            } else {
+                diffGroup.classList.remove('hidden');
+                rangeGroup.classList.remove('hidden');
+            }
+        }
+
         function getVolumeNumber(rangeStr) {
             if (!rangeStr) return -1;
             if (rangeStr.includes("その他")) return 999;
-            
             let match = rangeStr.match(/^(\d+)(上巻|下巻)?/);
-            if (match) {
-                return parseInt(match[1], 10);
-            }
+            if (match) return parseInt(match[1], 10);
             return -1;
         }
 
         function isRangeMatch(questionRange, selectedRange) {
-            // 問題側の range が空欄("")の場合
-            if (questionRange === "") {
-                return (selectedRange === "全範囲" || selectedRange === "1巻～17巻");
-            }
-
+            if (questionRange === "") return (selectedRange === "全範囲" || selectedRange === "1巻～17巻");
             if (selectedRange === '全範囲') return true;
             if (questionRange === selectedRange) return true;
-
-            if (questionRange.includes("その他") || selectedRange.includes("その他")) {
-                return questionRange === selectedRange;
-            }
-
-            if (selectedRange.includes('巻（上下巻両方）')) {
-                let baseMatch = selectedRange.match(/^(\d+)巻/);
-                if (baseMatch) {
-                    let baseNum = parseInt(baseMatch[1], 10);
-                    let qMatch = questionRange.match(/^(\d+)/);
-                    if (qMatch && parseInt(qMatch[1], 10) === baseNum) return true;
-                }
-            }
-
+            if (questionRange.includes("その他") || selectedRange.includes("その他")) return questionRange === selectedRange;
+            
             let qVol = getVolumeNumber(questionRange);
             if (qVol === 999 || qVol === -1) return false;
-
-            if (selectedRange === '1巻～4下巻') return qVol >= 1 && qVol <= 4;
-            if (selectedRange === '5巻～8巻') return qVol >= 5 && qVol <= 8;
-            if (selectedRange === '9巻～10下巻') return qVol >= 9 && qVol <= 10;
-            if (selectedRange === '1巻～10下巻') return qVol >= 1 && qVol <= 10;
-            if (selectedRange === '11巻～17巻') return qVol >= 11 && qVol <= 17;
             if (selectedRange === '1巻～17巻') return qVol >= 1 && qVol <= 17;
-
             return false;
         }
 
-        let currentList = [];
-        let currentIndex = 0;
-        let score = 0;
-        let selectedDiff = '';
-        let selectedRange = '';
+        async function startQuiz() {
+            const nickname = document.getElementById('nicknameInput').value.trim();
+            if (!nickname) {
+                alert('ニックネームを入力してください！');
+                return;
+            }
+            currentNickname = nickname;
+            currentMode = document.getElementById('modeSelect').value;
+            currentIndex = 0;
+            score = 0;
+            correctCount = 0;
 
-        function startQuiz() {
-            selectedDiff = document.getElementById('diffSelect').value;
-            selectedRange = document.getElementById('rangeSelect').value;
+            let filteredList = [];
 
-            let filteredList = quizData.filter(q => {
-                const diffMatch = (selectedDiff === '全て' || q.difficulty === selectedDiff);
-                const rangeMatch = isRangeMatch(q.range, selectedRange);
-                return diffMatch && rangeMatch;
-            });
+            if (currentMode === 'normal') {
+                const selectedDiff = document.getElementById('diffSelect').value;
+                const selectedRange = document.getElementById('rangeSelect').value;
+                filteredList = quizData.filter(q => {
+                    const diffMatch = (selectedDiff === '全て' || q.difficulty === selectedDiff);
+                    const rangeMatch = isRangeMatch(q.range, selectedRange);
+                    return diffMatch && rangeMatch;
+                });
+                filteredList.sort(() => Math.random() - 0.5);
+                currentList = filteredList.slice(0, 10);
+            } else if (currentMode === 'revenge') {
+                // ローカルの不正解履歴から出題
+                const revengeIds = getLocalRevengeList();
+                filteredList = quizData.filter(q => revengeIds.includes(q.id));
+                filteredList.sort(() => Math.random() - 0.5);
+                currentList = filteredList;
+            } else if (currentMode === 'hardcore') {
+                // Supabaseから全体正答率を取得し、5%以下の問題を抽出
+                filteredList = [];
+                try {
+                    const { data, error } = await supabaseClient.from('global_quiz_stats').select('*');
+                    if (error) throw error;
 
-            if (filteredList.length === 0) {
-                alert('条件に一致するクイズがありません！\n（※選択した範囲・難易度の問題データがまだ追加されていない可能性があります）');
+                    let statsMap = {};
+                    if (data) {
+                        data.forEach(row => {
+                            statsMap[row.question_id] = row;
+                        });
+                    }
+
+                    filteredList = quizData.filter(q => {
+                        const st = statsMap[q.id];
+                        if (!st || st.total === 0) return false; // データがなければ対象外
+                        const rate = (st.correct / st.total) * 100;
+                        return rate <= 5;
+                    });
+                } catch (e) {
+                    console.error("Hardcore mode fetch error:", e);
+                }
+                filteredList.sort(() => Math.random() - 0.5);
+                currentList = filteredList;
+            } else if (currentMode === 'timeattack_1-17' || currentMode === 'timeattack_all') {
+                const targetRange = currentMode === 'timeattack_1-17' ? '1巻～17巻' : '全範囲';
+                filteredList = quizData.filter(q => isRangeMatch(q.range, targetRange));
+                filteredList.sort(() => Math.random() - 0.5);
+                currentList = filteredList.slice(0, 10);
+                timeElapsed = 0;
+            } else if (currentMode === 'endless_1-17' || currentMode === 'endless_all') {
+                const targetRange = currentMode === 'endless_1-17' ? '1巻～17巻' : '全範囲';
+                filteredList = quizData.filter(q => isRangeMatch(q.range, targetRange));
+                filteredList.sort(() => Math.random() - 0.5);
+                currentList = filteredList;
+                timeLeft = 60;
+            }
+
+            if (currentList.length === 0) {
+                alert('条件に一致するクイズがありません！');
                 return;
             }
 
-            // 重複なしでランダム抽出しつつ、問題数が10問未満でもエラーにせず全問出す安全仕様
-            filteredList.sort(() => Math.random() - 0.5);
-            const questionCount = Math.min(filteredList.length, 10);
-            currentList = filteredList.slice(0, questionCount);
-
-            currentIndex = 0;
-            score = 0;
-
             document.getElementById('setupScreen').classList.add('hidden');
             document.getElementById('quizScreen').classList.remove('hidden');
+
+            if (currentMode.includes('timeattack')) {
+                startTimerCounter();
+            } else if (currentMode.includes('endless')) {
+                startEndlessTimer();
+            }
+
             loadQuestion();
         }
 
+        function startTimerCounter() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeElapsed++;
+                document.getElementById('timerDisplay').innerText = `経過時間: ${timeElapsed}秒`;
+            }, 1000);
+        }
+
+        function startEndlessTimer() {
+            clearInterval(timer);
+            document.getElementById('timerDisplay').innerText = `残り時間: ${timeLeft}秒`;
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timerDisplay').innerText = `残り時間: ${timeLeft}秒`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endEndlessQuiz();
+                }
+            }, 1000);
+        }
+
         function loadQuestion() {
+            if (currentMode.includes('endless') && currentList.length <= currentIndex) {
+                currentList.sort(() => Math.random() - 0.5);
+                currentIndex = 0;
+            }
+
             const q = currentList[currentIndex];
-            document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
+            if (currentMode.includes('timeattack') || currentMode.includes('revenge') || currentMode.includes('hardcore') || currentMode === 'normal') {
+                document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
+            } else {
+                document.getElementById('progressText').innerText = `得点ポイント: ${score} pt`;
+            }
             
             let rangeDisplay = q.range ? q.range : "非公開";
             document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${rangeDisplay}]`;
-            
             document.getElementById('questionText').innerText = q.question;
             
             const descArea = document.getElementById('descArea');
@@ -1346,12 +1483,11 @@
                 descArea.classList.add('hidden');
                 choiceArea.classList.remove('hidden');
                 choiceArea.innerHTML = '';
-
                 q.choices.forEach(choiceText => {
                     const btn = document.createElement('button');
                     btn.className = 'choice-btn';
                     btn.innerText = choiceText;
-                    btn.onclick = () => checkChoiceAnswer(choiceText);
+                    btn.onclick = () => checkAnswer(choiceText, q);
                     choiceArea.appendChild(btn);
                 });
             } else {
@@ -1370,30 +1506,101 @@
                 alert('答えを入力してください');
                 return;
             }
-
             const q = currentList[currentIndex];
-            const isCorrect = (userAns === q.answer);
-            if (isCorrect) score++;
+            checkAnswer(userAns, q);
+        }
 
-            document.getElementById('userAnswer').disabled = true;
-            document.getElementById('submitBtn').classList.add('hidden');
+        async function checkAnswer(selectedChoice, q) {
+            const isCorrect = (selectedChoice === q.answer);
+
+            // 1. ローカル管理（リベンジ用）の更新
+            if (isCorrect) {
+                removeLocalRevenge(q.id);
+            } else {
+                addLocalRevenge(q.id);
+            }
+
+            // 2. インターネット共通管理（全体正答率用）の更新をSupabaseに送信
+            updateGlobalStatsInSupabase(q.id, isCorrect);
+
+            if (isCorrect) {
+                correctCount++;
+                if (currentMode.includes('endless')) {
+                    if (q.difficulty === '簡単') score += 1;
+                    else if (q.difficulty === '普通') score += 3;
+                    else if (q.difficulty === '難しい') score += 5;
+
+                    if (q.difficulty === '簡単') timeLeft += 3;
+                    else if (q.difficulty === '普通') timeLeft += 5;
+                    else if (q.difficulty === '難しい') timeLeft += 10;
+                } else {
+                    score++;
+                }
+            } else {
+                if (currentMode.includes('endless')) {
+                    if (q.difficulty === '簡単') timeLeft -= 10;
+                    else if (q.difficulty === '普通') timeLeft -= 5;
+                    else if (q.difficulty === '難しい') timeLeft -= 3;
+                    if (timeLeft < 0) timeLeft = 0;
+                }
+            }
+
+            if (q.type === 'choice') {
+                const buttons = document.querySelectorAll('#choiceArea button');
+                buttons.forEach(btn => btn.disabled = true);
+            } else {
+                document.getElementById('userAnswer').disabled = true;
+                document.getElementById('submitBtn').classList.add('hidden');
+            }
+
             showFeedback(isCorrect, q);
         }
 
-        function checkChoiceAnswer(selectedChoice) {
-            const q = currentList[currentIndex];
-            const isCorrect = (selectedChoice === q.answer);
-            if (isCorrect) score++;
+        async function updateGlobalStatsInSupabase(qId, isCorrect) {
+            try {
+                // 既存の全体データを取得
+                const { data } = await supabaseClient
+                    .from('global_quiz_stats')
+                    .select('*')
+                    .eq('question_id', qId)
+                    .single();
 
-            const buttons = document.querySelectorAll('#choiceArea button');
-            buttons.forEach(btn => btn.disabled = true);
+                let total = 1;
+                let correct = isCorrect ? 1 : 0;
+                let incorrect = isCorrect ? 0 : 1;
 
-            showFeedback(isCorrect, q);
+                if (data) {
+                    total = data.total + 1;
+                    correct = data.correct + (isCorrect ? 1 : 0);
+                    incorrect = data.incorrect + (isCorrect ? 0 : 1);
+                }
+
+                await supabaseClient
+                    .from('global_quiz_stats')
+                    .upsert({
+                        question_id: qId,
+                        total: total,
+                        correct: correct,
+                        incorrect: incorrect,
+                        updated_at: new Date()
+                    }, { onConflict: 'question_id' });
+            } catch (e) {
+                console.error("Global stats update error:", e);
+            }
         }
 
         function skipQuestion() {
             const q = currentList[currentIndex];
-            
+            addLocalRevenge(q.id);
+            updateGlobalStatsInSupabase(q.id, false);
+
+            if (currentMode.includes('timeattack')) {
+                timeElapsed += 5;
+            } else if (currentMode.includes('endless')) {
+                timeLeft -= 5;
+                if (timeLeft < 0) timeLeft = 0;
+            }
+
             if (q.type === 'choice') {
                 const buttons = document.querySelectorAll('#choiceArea button');
                 buttons.forEach(btn => btn.disabled = true);
@@ -1404,7 +1611,7 @@
 
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback incorrect`;
-            feedback.innerHTML = `登録データがスキップされました<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
+            feedback.innerHTML = `スキップしました<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
             document.getElementById('skipBtn').classList.add('hidden');
@@ -1422,7 +1629,17 @@
         }
 
         function nextQuestion() {
+            if (currentMode.includes('endless') && timeLeft <= 0) {
+                endEndlessQuiz();
+                return;
+            }
+
             currentIndex++;
+            if (currentMode.includes('timeattack') && currentIndex >= 10) {
+                endTimerQuiz();
+                return;
+            }
+
             if (currentIndex < currentList.length) {
                 loadQuestion();
             } else {
@@ -1430,19 +1647,90 @@
             }
         }
 
+        function endTimerQuiz() {
+            clearInterval(timer);
+            saveScoreToSupabase(currentMode, currentNickname, timeElapsed);
+            showResult();
+        }
+
+        function endEndlessQuiz() {
+            clearInterval(timer);
+            saveScoreToSupabase(currentMode, currentNickname, score);
+            showResult();
+        }
+
         function showResult() {
             document.getElementById('quizScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.remove('hidden');
             
-            document.getElementById('resultDiff').innerText = selectedDiff;
-            document.getElementById('resultRange').innerText = selectedRange;
+            document.getElementById('resultNickname').innerText = currentNickname;
+            document.getElementById('resultModeName').innerText = document.getElementById('modeSelect').options[document.getElementById('modeSelect').selectedIndex].text;
 
-            const rate = Math.round((score / currentList.length) * 100);
-            document.getElementById('scoreText').innerText = `正答数: ${score} / ${currentList.length} 問 (${rate}%)`;
+            if (currentMode.includes('timeattack')) {
+                document.getElementById('resultDetailText').innerHTML = `<strong>クリアタイム:</strong> ${timeElapsed} 秒`;
+                document.getElementById('scoreText').innerText = `正答数: ${score} / ${currentList.length} 問`;
+            } else if (currentMode.includes('endless')) {
+                document.getElementById('resultDetailText').innerHTML = `<strong>獲得ポイント:</strong> ${score} pt`;
+                document.getElementById('scoreText').innerText = `正解数: ${correctCount} 問`;
+            } else {
+                const rate = Math.round((score / currentList.length) * 100);
+                document.getElementById('resultDetailText').innerHTML = ``;
+                document.getElementById('scoreText').innerText = `正答数: ${score} / ${currentList.length} 問 (${rate}%)`;
+            }
+        }
+
+        async function saveScoreToSupabase(mode, nickname, val) {
+            try {
+                await supabaseClient.from('rankings').insert([
+                    { mode: mode, nickname: nickname, score: val, created_at: new Date() }
+                ]);
+            } catch (e) {
+                console.error("Supabase ranking save error:", e);
+            }
+        }
+
+        function showRankingMenu() {
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('rankingScreen').classList.remove('hidden');
+            loadRankingData();
+        }
+
+        async function loadRankingData() {
+            const rankingType = document.getElementById('rankingTypeSelect').value;
+            const container = document.getElementById('rankingContent');
+            container.innerHTML = '読み込み中...';
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('rankings')
+                    .select('*')
+                    .eq('mode', rankingType)
+                    .order('score', { ascending: rankingType.includes('timeattack') ? true : false })
+                    .limit(10);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; margin-top:15px;">ランキングデータがまだありません。</p>';
+                    return;
+                }
+
+                let html = `<table class="ranking-table"><tr><th>順位</th><th>ニックネーム</th><th>${rankingType.includes('timeattack') ? 'タイム' : 'ポイント'}</th></tr>`;
+                data.forEach((row, index) => {
+                    html += `<tr><td>${index + 1}</td><td>${row.nickname}</td><td>${row.score} ${rankingType.includes('timeattack') ? '秒' : 'pt'}</td></tr>`;
+                });
+                html += `</table>`;
+                container.innerHTML = html;
+            } catch (e) {
+                container.innerHTML = '<p style="text-align:center; color:red; margin-top:15px;">ランキングの取得に失敗しました。<br>（Supabaseの接続設定を確認してください）</p>';
+            }
         }
 
         function resetQuiz() {
+            clearInterval(timer);
+            document.getElementById('quizScreen').classList.add('hidden');
             document.getElementById('resultScreen').classList.add('hidden');
+            document.getElementById('rankingScreen').classList.add('hidden');
             document.getElementById('setupScreen').classList.remove('hidden');
         }
     </script>
