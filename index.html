@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>魔王学院の不適合者クイズ</title>
+    <title>作品クイズツール</title>
     <style>
         body {
             font-family: sans-serif;
@@ -71,7 +71,7 @@
 
     <!-- 設定画面 -->
     <div class="card" id="setupScreen">
-        <h1>魔王学院の不適合者クイズ</h1>
+        <h1>作品クイズ設定</h1>
         <div class="form-group">
             <label>難易度選択</label>
             <select id="diffSelect">
@@ -160,6 +160,7 @@
     <script>
         // ==========================================
         // 【クイズデータの追加・編集エリア】
+        // type: "desc" (記述) / "choice" (選択)
         // range: "" にすると「全範囲」と「1巻～17巻」の時に出題されます
         // ==========================================
         const quizData = [
@@ -304,7 +305,6 @@
                 range: "", 
                 difficulty: "簡単", 
                 explanation: "ミラノのフルネームくらい簡単ですよ。" 
-            },
             },
             { 
                 type: "choice", 
@@ -488,8 +488,7 @@
             },
             { 
                 type: "desc", 
-                question: "ジークが嘘をつくと指定していた事柄は何についてだった？
-「について」は不要です。", 
+                question: "ジークが嘘をつくと指定していた事柄は何についてだった？¥n「について」は不要です。", 
                 answer: "大精霊レノの子供", 
                 range: "4上巻", 
                 difficulty: "簡単", 
@@ -542,566 +541,6 @@
                 range: "4上巻", 
                 difficulty: "難しい", 
                 explanation: "都市名ってムズくないですか？" 
-            },
-            { 
-                type: "desc", 
-                question: "破壊神アベルニユーが司る秩序は何というもの？", 
-                answer: "万物は一切が滅びへ向かう", 
-                range: "4上巻", 
-                difficulty: "難しい", 
-                explanation: "いろいろ言われてますけど、正式に？司どってるのはこれですね" 
-            },
-            { 
-                type: "desc", 
-                question: "ジークの体は何の魔法で燃やされた？¥n《〇〇》のように《》を付けて漢字で答えてください。", 
-                answer: "《火炎》", 
-                range: "4上巻", 
-                difficulty: "難しい", 
-                explanation: "正直ここ覚えてる人って少ないと思うんですよ。" 
-            },
-            { 
-                type: "desc", 
-                question: "アノスが月をわしづかみにして動かした魔法は？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《森羅万掌》", 
-                range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "覚えやすい魔法代表。" 
-            },
-            { 
-                type: "desc", 
-                question: "痕跡の大地で使用できない魔法は？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《根源再生》", 
-                range: "その他（書籍外）", 
-                difficulty: "普通", 
-                explanation: "魔法の原理的に使えないとのこと。" 
-            },
-            { 
-                type: "desc", 
-                question: "テオ・アスクの漢字表記は？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《聖愛域》", 
-                range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "忘れていても思い出せる魔法だと思います。" 
-            },
-            { 
-                type: "desc", 
-                question: "ジェルガがアノスと戦う際に使った大聖剣は何の魔法で作られた？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《聖域》", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "《聖域》が何魔法か忘れたのか突っ込みたくなるね。" 
-            },
-            { 
-                type: "desc", 
-                question: "「えへへ……応援歌だからといって、（　）じゃないと思ったか？」の（　）に入る言葉は？", 
-                answer: "ラブソング", 
-                range: "3巻", 
-                difficulty: "普通", 
-                explanation: "ギリ推測可能なレベル。" 
-            },
-            { 
-                type: "desc", 
-                question: "ギリシリスが、極めれば無限の魔力を作り出すことができると思っていたのは何魔法？", 
-                answer: "古文魔法", 
-                range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "浅瀬きた。" 
-            },
-            { 
-                type: "choice", 
-                question: "エールドメードはどうして一回生二組の教師になることができた？", 
-                choices: ["七魔皇老の推薦", "ノウスガリアの神の言葉", "欠員補充の採用試験に合格した", "以前から教師として潜り込んでいた"], 
-                answer: "欠員補充の採用試験に合格した", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "消去法ですかね。" 
-            },
-            { 
-                type: "choice", 
-                question: "精霊の学舎小テストで『デードイリッヒ』と書いたのは誰？", 
-                choices: ["アノス", "サーシャ", "エレオノール", "ゼシア"], 
-                answer: "サーシャ", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "サーシャのイメージないですよね。" 
-            },
-            { 
-                type: "choice", 
-                question: "アノスが不味いと言ったのはどれ？", 
-                choices: ["聖ディミラ酒", "ぶどう酒", "聖葡萄酒", "魔王酒"], 
-                answer: "聖葡萄酒", 
-             range: "4上巻", 
-                difficulty: "簡単", 
-                explanation: "記憶をたどれば解けそうな問題。" 
-            },
-            { 
-                type: "choice", 
-                question: "メノウの言葉になかった単語はどれでしょう？", 
-                choices: ["エルーガ海峡", "ミレイヌ砂漠", "デルテスト山脈", "トーラの森"], 
-                answer: "エルーガ海峡", 
-             range: "3巻", 
-                difficulty: "普通", 
-                explanation: "普通の中では難易度高めの問題。" 
-            },
-            { 
-                type: "choice", 
-                question: "メノウがガイラディーテに着くまでに何日かかった？", 
-                choices: ["一日", "二日", "三日", "十日"], 
-                answer: "二日", 
-             range: "3巻", 
-                difficulty: "普通", 
-                explanation: "結局どうでもよかった情報。" 
-            },
-            { 
-                type: "choice", 
-                question: "妖精犬ガウイーレはいつしか現れない？", 
-                choices: ["朝", "昼", "夕方", "夜"], 
-                answer: "昼", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "作中では一度も現れないですけどね。" 
-            },
-            { 
-                type: "choice", 
-                question: "ゼーヘンブルグの都はミッドヘイズからみてどの方角にある？", 
-                choices: ["北東", "北西", "南東", "南西"], 
-                answer: "北西", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "これを覚えてる人はもはや変態です。" 
-            },
-            { 
-                type: "choice", 
-                question: "イザベラに霊神人剣が効かないとレイが言った理由は？", 
-                choices: ["根源が七つぐらいありそうだから", "真に聖なる者だから", "《破滅の魔眼》が効かないから", "言葉の理滅剣を使うから"], 
-                answer: "真に聖なる者だから", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "天然こそが全てを凌駕する( ; ･`д･´)" 
-            },
-            { 
-                type: "choice", 
-                question: "四邪王族であるエールドメードは何王と呼ばれている？", 
-                choices: ["熾死王", "死熾王", "獅子王", "獅死王"], 
-                answer: "熾死王", 
-             range: "4上巻", 
-                difficulty: "簡単", 
-                explanation: "簡単すぎて舐められてるように思えますか？" 
-            },
-            { 
-                type: "choice", 
-                question: "魔楯ゲニアズの魔宝石の数は？", 
-                choices: ["四つ", "五つ", "六つ", "七つ"], 
-                answer: "四つ", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "魔楯ゲニアズの初見殺し感よ。" 
-            },
-            { 
-                type: "choice", 
-                question: "神の子の可能性があると言われていなかったのは？", 
-                choices: ["ミーシャ", "ミサ", "エレオノール", "ゼシア"], 
-                answer: "エレオノール", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "話を理解していれば余裕。" 
-            },
-            { 
-                type: "choice", 
-                question: "アハルトヘルンの噂と伝承は？", 
-                choices: ["大精霊が暮らす不思議な森", "大精霊が棲む不思議な森", "精霊の住処", "精霊たちが住まう世界"], 
-                answer: "大精霊が棲む不思議な森", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "精霊の住処と精霊たちが住まう世界は記述があるけど、噂と伝承はこれ。" 
-            },
-            { 
-                type: "choice", 
-                question: "日食の予定は遠征試験開始日の九日後の十二時何分から何分間？", 
-                choices: ["二七分から三分間", "二五分から五分間", "五七分から三分間", "五五分から五分間"], 
-                answer: "二七分から三分間", 
-             range: "4上巻", 
-                difficulty: "普通", 
-                explanation: "覚えてないですよね、わかります。" 
-            },
-            { 
-                type: "choice", 
-                question: "半霊半魔であるミサの半身の噂と伝承は？", 
-                choices: ["暴虐の魔王を滅ぼす神の子", "大精霊レノの娘", "勇者の嫁", "暴虐の魔王アヴォス・ディルヘヴィア"], 
-                answer: "暴虐の魔王アヴォス・ディルヘヴィア", 
-             range: "4上巻", 
-                difficulty: "簡単", 
-                explanation: "読み終わってて知らない人は記憶喪失。" 
-            },
-            { 
-                type: "choice", 
-                question: "アヴォス・ディルヘヴィアが手中に収めようとしている武器は？", 
-                choices: ["略奪剣ギリオノジェス", "霊神人剣エヴァンスマナ", "理滅剣ヴェヌズドノア", "一意剣シグシェスタ"], 
-                answer: "理滅剣ヴェヌズドノア", 
-             range: "4上巻", 
-                difficulty: "簡単", 
-                explanation: "そりゃそう。" 
-            },
-            { 
-                type: "choice", 
-                question: "シン・レグリアについて正しくないものは？", 
-                choices: ["魔王の右腕と言われている", "勇者カノンに負けたことはない", "魔族最強の剣士", "千の魔剣を持っている"], 
-                answer: "勇者カノンに負けたことはない", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "忘れてる人いるかな？いないか。" 
-            },
-            { 
-                type: "choice", 
-                question: "以下は何について説明したもの？
-「世界に根ざす様々な伝承・逸話が生物として形を成した存在。その力は元となった伝承がより広まっているほど強く、それに忠実になる。真体と、仮初めの姿を持つ。」", 
-                choices: ["魔族", "人間", "精霊", "神族"], 
-                answer: "精霊", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "魔族と人間は論外。" 
-            },
-            { 
-                type: "choice", 
-                question: "班別対抗試験でアノスが使ったのは？", 
-                choices: ["魔剣イニーティオ", "金剛石の剣", "鉄の剣", "木の棒"], 
-                answer: "木の棒", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "覚えてない人いないだろって思いながら訊いてる。" 
-            },
-            { 
-                type: "choice", 
-                question: "レイが皇族派の言いなりになっていた理由は母を人質に取られていたため、〇〇の魔剣を体内に刺されたから。¥n〇〇の中に入るのは？", 
-                choices: ["従属", "隷属", "制約", "契約"], 
-                answer: "契約", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "読み返してない人は曖昧なんじゃないですかね？" 
-            },
-            { 
-                type: "choice", 
-                question: "メルヘイスに刺さっていた魔剣は？", 
-                choices: ["従属の魔剣", "隷属の魔剣", "制約の魔剣", "契約の魔剣"], 
-                answer: "隷属の魔剣", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "読み返してない人はレイのと間違えるんじゃないですか？" 
-            },
-            { 
-                type: "choice", 
-                question: "エミリアは何に転生させられた？", 
-                choices: ["魔族と精霊の混血", "人間と魔族の混血", "純血の魔族と混血の魔族の混血", "混血の魔族と混血の魔族の混血"], 
-                answer: "人間と魔族の混血", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "後の展開知ってる人なら楽勝なんじゃないですか？" 
-            },
-            { 
-                type: "choice", 
-                question: "レイの育て親である母親の名前は？", 
-                choices: ["シーラ", "メリッサ", "イザベラ", "デミル"], 
-                answer: "シーラ", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "わからない人は2巻で何を読んでたんですか？" 
-            },
-            { 
-                type: "choice", 
-                question: "二千年前に世界を四つに分けた魔法は？", 
-                choices: ["《四界牆壁》", "《四断牆壁》", "《四分牆壁》", "《四隔牆壁》"], 
-                answer: "《四界牆壁》", 
-             range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "牆の字を変換で出す方法がわからないでおなじみの。" 
-            },
-            { 
-                type: "choice", 
-                question: "アノスが転生を果たした時代は魔法の時代と呼ばれていて、暴虐の魔王として名を馳せたのは神話の時代です。¥n神話の時代は魔法の時代の何年前？", 
-                choices: ["100年前", "200年前", "1000年前", "2000年前"], 
-                answer: "2000年前", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "これ間違える人は1巻しか読んでないと断言します。" 
-            },
-            { 
-                type: "choice", 
-                question: "魔王学院デルゾゲードの不適合者の烙印はどんな形？", 
-                choices: ["十字", "三角形", "六芒星", "七芒星"], 
-                answer: "十字", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "最近読み始めた人は覚えてない、かも？" 
-            },
-            { 
-                type: "choice", 
-                question: "リーベストがメノウに魔王学院を辞めようと思ってることを相談したのはいつ?", 
-                choices: ["リーベストが一回生のとき", "リーベストが二回生のとき", "リーベストが三回生のとき", "リーベストが魔王学院をやめようと思ったことはない"], 
-                answer: "リーベストが二回生のとき", 
-             range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "地味に印象に残らない。" 
-            },
-            { 
-                type: "choice", 
-                question: "アゼシオンは連合国の税収の何割を勇者学院に使っている？", 
-                choices: ["一割", "二割", "三割", "四割"], 
-                answer: "一割", 
-             range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "ふーんとしか言えない。" 
-            },
-            { 
-                type: "choice", 
-                question: "班リーダーになるにはある魔法を行使できなければならないが、その魔法とは？", 
-                choices: ["《獄炎殲滅砲》", "《転移》", "《思念通信》", "《魔王軍》"], 
-                answer: "《魔王軍》", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "これ間違えるならすぐに読み返したほうがいいです。" 
-            },
-            { 
-                type: "choice", 
-                question: "ミーシャとサーシャはどんな関係？", 
-                choices: ["腹違いの姉妹", "ミーシャは魔法人形", "元は1人だった", "普通の姉妹"], 
-                answer: "元は1人だった", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "これ間違えるのは今まで何を読んでたのって感じ。" 
-            },
-            { 
-                type: "choice", 
-                question: "神話の時代にアノスが魔王城に呼んでないのは？", 
-                choices: ["勇者カノン", "母なる大精霊レノ", "創造神ミリティア", "魔導王ボミラス"], 
-                answer: "魔導王ボミラス", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "魔導王ボミラスだれやねん。" 
-            },
-            { 
-                type: "choice", 
-                question: "アヴォスを演じていたとバレたレイがアノスと戦う際に左手で持っていたのは？", 
-                choices: ["魔剣イニーティオ", "光の聖剣エンハーレ", "一意剣シグシェスタ", "霊神人剣エヴァンスマナ"], 
-                answer: "一意剣シグシェスタ", 
-             range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "ほぼ2択。" 
-            },
-            { 
-                type: "choice", 
-                question: "エレオノールは勇者学院の何回生？", 
-                choices: ["一回生", "二回生", "三回生", "『ジェルガカノン』なので何回生というのはない"], 
-                answer: "三回生", 
-             range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "わからないけどすごく留年してそう。" 
-            },
-            { 
-                type: "choice", 
-                question: "ラオスについて正しくないのはどれ？", 
-                choices: ["勇者学院第三位", "勇者カノンの第三根源の転生者だと言われていた", "聖炎の破壊騎士", "聖炎熾剣ガリュフォードを使う"], 
-                answer: "勇者学院第三位", 
-             range: "3巻", 
-                difficulty: "普通", 
-                explanation: "第三位なのに第三根源とちゃうんかい。" 
-            },
-            { 
-                type: "choice", 
-                question: "レイがミサに一つ貝の首飾りをあげたのは何を祝った祭りでの出来事？", 
-                choices: ["勇者カノンの聖誕", "大勇者ジェルガの聖誕", "暴虐の魔王の討伐", "勇者学院の設立"], 
-                answer: "大勇者ジェルガの聖誕", 
-             range: "3巻", 
-                difficulty: "普通", 
-                explanation: "レイミサのイチャイチャしか記憶にないだろう。" 
-            },
-            { 
-                type: "choice", 
-                question: "世界に現存する聖剣は何本と言われている？", 
-                choices: ["六六本", "七七本", "八八本", "九九本"], 
-                answer: "八八本", 
-             range: "3巻", 
-                difficulty: "普通", 
-                explanation: "少ないと言いにくい個数。" 
-            },
-            { 
-                type: "choice", 
-                question: "作中の「正しき姿に戻るがよい」という発言は誰がしたもの？", 
-                choices: ["アノス", "ジェルガ", "ディエゴ", "アイヴィス"], 
-                answer: "アイヴィス", 
-             range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "少ないと言いにくい個数。" 
-            },
-            { 
-                type: "choice", 
-                question: "ハイネの大聖地剣と大聖土剣について正しいものは？", 
-                choices: ["大聖地剣ゼレオでつけた疵痕を大聖土剣ゼーレで斬り裂くと聖痕になる", "大聖土剣ゼレオでつけた疵痕を大聖地剣ゼーレで斬り裂くと聖痕になる", "大聖土剣ゼーレでつけた疵痕を大聖地剣ゼレオで斬り裂くと聖痕になる", "大聖地剣ゼーレでつけた疵痕を大聖土剣ゼレオで斬り裂くと聖痕になる"], 
-                answer: "大聖土剣ゼレオでつけた疵痕を大聖地剣ゼーレで斬り裂くと聖痕になる", 
-             range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "ややこしすぎる。" 
-            },
-            { 
-                type: "choice", 
-                question: "歴史を変えようとすると出張ってくる番神の名前は？", 
-                choices: ["時の番神エウゴ・ラ・ラヴィアズ", "歴史の番神エウゴ・ラ・ラヴィアズ", "過去の番神エウゴ・ラ・ラヴィアズ", "時間の番神エウゴ・ラ・ラヴィアズ"], 
-                answer: "時の番神エウゴ・ラ・ラヴィアズ", 
-             range: "1巻", 
-                difficulty: "簡単", 
-                explanation: "エウゴ・ラ・ラヴィアズってめっちゃ言いやすくない？。" 
-            },
-            { 
-                type: "desc", 
-                question: "アノスが持つ、万物万象を滅ぼす始祖の魔剣の名前を漢字とカタカナで答えてください", 
-                answer: "理滅剣ヴェヌズドノア", 
-                range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "これ間違えたら笑いものですわ。" 
-            },
-            { 
-                type: "desc", 
-                question: "メノウは何回生何組の担任をしていた？¥n何回生何組のように漢数字で答えてください", 
-                answer: "三回生一組", 
-                range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "一組なことはあまり言われてない。" 
-            },
-            { 
-                type: "desc", 
-                question: "《水中活動》のルビは？", 
-                answer: "ココ", 
-                range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "最もルビの文字数が少ない魔法。" 
-            },
-            },
-            { 
-                type: "desc", 
-                question: "聖なる魔法で負う、回復魔法が効かない深い傷のことを何と言う？", 
-                answer: "聖痕", 
-                range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "印象に残ってるから簡単なはず。" 
-            },
-            { 
-                type: "desc", 
-                question: "《四界牆壁》は人間の伝承では何と呼ばれていた？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《四聖結界》", 
-                range: "3巻", 
-                difficulty: "簡単", 
-                explanation: "かっこええ。" 
-            },
-            { 
-                type: "desc", 
-                question: "ミーシャの得意魔法は？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《創造建築》", 
-                range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "ミーシャといえばこの魔法。" 
-            },
-            { 
-                type: "desc", 
-                question: "《分離融合転生》は何と融合魔法の術式を組み合わせて作った魔法？¥n《〇〇》のように《》を付けて答えてください。", 
-                answer: "《分魂分体》", 
-                range: "1巻", 
-                difficulty: "普通", 
-                explanation: "ルビも覚えてますか？" 
-            },
-            { 
-                type: "desc", 
-                question: "レイの育て親であるシーラの病名は？", 
-                answer: "精霊病", 
-                range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "まんまですね。" 
-            },
-            { 
-                type: "desc", 
-                question: "ラオスがアノスの瞬きで吹き飛ばされた場所は何という部屋？", 
-                answer: "魔法図書館", 
-                range: "3巻", 
-                difficulty: "普通", 
-                explanation: "ちょろっとしか言われてないね。" 
-            },
-            { 
-                type: "desc", 
-                question: "千年以上ガイラディーテと友好関係を築いていた西の帝国の名前は？¥n〇〇帝国のように答えてください", 
-                answer: "インズエル帝国", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "こういった国名全部覚えてる人本当にすごい。" 
-            },
-            { 
-                type: "desc", 
-                question: "魔王学院デルゾゲードに転入してきた転入生のフルネームは？", 
-                answer: "レイ・グランズドリィ", 
-                range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "レイ・イエスタ？捨てられたので×で。" 
-            },
-            { 
-                type: "desc", 
-                question: "《勇者部隊》には七つのクラスがある。¥n勇者、賢者、魔法師、神官、召喚士、聖騎士、あと一つは？", 
-                answer: "霊術師", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "七つの中で一番難しそうなの出してみました。" 
-            },
-            { 
-                type: "desc", 
-                question: "ミシェンス貝はどこに生息する？¥n9文字で答えてください。", 
-                answer: "ガイラディーテの湖", 
-                range: "3巻", 
-                difficulty: "普通", 
-                explanation: "はいそうです。" 
-            },
-            { 
-                type: "desc", 
-                question: "《聖域》は何魔法？", 
-                answer: "精神魔法", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "そんなの誰も気にしてないよ。" 
-            },
-            { 
-                type: "desc", 
-                question: "《勇者部隊》は何魔法？", 
-                answer: "軍勢魔法", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "気にしないでしょこれは。" 
-            },
-            { 
-                type: "desc", 
-                question: "勇者学院の制服の色は？¥nエレオノールの制服の色を先にして、○色と◯色のように答えてください。", 
-                answer: "緋色と藍色", 
-                range: "3巻", 
-                difficulty: "難しい", 
-                explanation: "藍色の制服とか見たことない気が……。" 
-            },
-            { 
-                type: "desc", 
-                question: "ミサの校章の印は？", 
-                answer: "四角形", 
-                range: "2巻", 
-                difficulty: "難しい", 
-                explanation: "気にしたことある人いるのかな。" 
-            },
-            { 
-                type: "desc", 
-                question: "統一派の下部組織だとされるグループの正式名称は？", 
-                answer: "アノス・ファンユニオン", 
-                range: "2巻", 
-                difficulty: "簡単", 
-                explanation: "問題で不安にさせるスタイル" 
-            },
-            { 
-                type: "desc", 
-                question: "古代精霊語で『噂ではない』という意味にあたる言葉は？", 
-                answer: "ジジェイク", 
-                range: "2巻", 
-                difficulty: "難しい", 
-                explanation: "精霊の名前なのは常識ですが、意味はそう覚えていないのでは？" 
             },
             { 
                 type: "desc", 
@@ -1755,7 +1194,7 @@
                 type: "choice", 
                 question: "エレオノールの平和の証はEかFくらいですが、次のうち間違っているのは？", 
                 choices: ["サーシャの平和の証は大体Bで身長は154cm位", "ミーシャの平和の証はCぐらいで身長は154cm位", "ゼシアの髪の色はみんな若干違う", "アノスの16才相当の身長は177cm位"], 
-                answer: "お酒に強くなる", 
+                answer: "サーシャの平和の証は大体Bで身長は154cm位", 
                 range: "その他（書籍外）", 
                 difficulty: "普通", 
                 explanation: "サーシャはAです。" 
@@ -1785,7 +1224,7 @@
                 range: "その他（書籍外）", 
                 difficulty: "普通", 
                 explanation: "始祖ってほど始祖でもない。" 
-            }
+            },
             { 
                 type: "desc", 
                 question: "なろうにも間違えて書かれたことがある五世爵の名称の候補は？", 
@@ -1793,7 +1232,7 @@
                 range: "その他（書籍外）", 
                 difficulty: "難しい", 
                 explanation: "結構知ってそう。" 
-            }
+            },
             { 
                 type: "desc", 
                 question: "秋先生がなろう本文に間違えてコピペしてしまった文は？", 
@@ -1816,13 +1255,9 @@
         }
 
         function isRangeMatch(questionRange, selectedRange) {
-            // 問題側の range が空欄("")の場合の処理
+            // 問題側の range が空欄("")の場合
             if (questionRange === "") {
-                // 「全範囲」または「1巻～17巻」が選ばれている時だけ許可する
-                if (selectedRange === "全範囲" || selectedRange === "1巻～17巻") {
-                    return true;
-                }
-                return false;
+                return (selectedRange === "全範囲" || selectedRange === "1巻～17巻");
             }
 
             if (selectedRange === '全範囲') return true;
@@ -1875,8 +1310,10 @@
                 return;
             }
 
+            // 重複なしでランダム抽出しつつ、問題数が10問未満でもエラーにせず全問出す安全仕様
             filteredList.sort(() => Math.random() - 0.5);
-            currentList = filteredList.slice(0, 10);
+            const questionCount = Math.min(filteredList.length, 10);
+            currentList = filteredList.slice(0, questionCount);
 
             currentIndex = 0;
             score = 0;
@@ -1890,7 +1327,6 @@
             const q = currentList[currentIndex];
             document.getElementById('progressText').innerText = `第 ${currentIndex + 1} 問 / 全 ${currentList.length} 問`;
             
-            // rangeが空欄のときはメタ情報に巻数を表示しないように配慮
             let rangeDisplay = q.range ? q.range : "非公開";
             document.getElementById('metaInfo').innerText = `[難易度: ${q.difficulty} / 範囲: ${rangeDisplay}]`;
             
@@ -1921,8 +1357,9 @@
             } else {
                 choiceArea.classList.add('hidden');
                 descArea.classList.remove('hidden');
-                document.getElementById('userAnswer').value = '';
-                document.getElementById('userAnswer').disabled = false;
+                const inputBox = document.getElementById('userAnswer');
+                inputBox.value = '';
+                inputBox.disabled = false;
                 document.getElementById('submitBtn').classList.remove('hidden');
             }
         }
@@ -1967,7 +1404,7 @@
 
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback incorrect`;
-            feedback.innerHTML = `<strong>スキップしました（不正解扱い）</strong><br>正解: ${q.answer}<br>解説: ${q.explanation}`;
+            feedback.innerHTML = `登録データがスキップされました<br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
             document.getElementById('skipBtn').classList.add('hidden');
@@ -1977,7 +1414,7 @@
         function showFeedback(isCorrect, q) {
             const feedback = document.getElementById('feedbackArea');
             feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
-            feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br>正解: ${q.answer}<br>解説: ${q.explanation}`;
+            feedback.innerHTML = `<strong>${isCorrect ? '正解！' : '不正解...'}</strong><br><strong>正解:</strong> ${q.answer}<br><strong>解説:</strong> ${q.explanation}`;
             feedback.classList.remove('hidden');
 
             document.getElementById('skipBtn').classList.add('hidden');
